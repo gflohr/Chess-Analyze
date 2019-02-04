@@ -66,6 +66,12 @@ sub newFromArgv {
 
 sub programName { $0 }
 
+sub analyze {
+	die "todo";
+}
+
+sub __defaultOptions {}
+
 sub __getOptions {
 	my ($self, $argv) = @_;
 
@@ -73,22 +79,6 @@ sub __getOptions {
 
 	Getopt::Long::Configure('bundling');
 	GetOptionsFromArray($argv,
-		# Debugging
-		'd|debug' => \$options{debug},
-
-		# Files
-		'o|outfile=s' => \$options{outfile},
-		't|stdout' => \$options{stdout},
-
-		# Scanner behavior
-		'e|encoding=s' => \$options{encoding},
-		'yylineno' => \$options{yylineno},
-
-		# Generated code
-		'p|package=s' => \$options{package},
-		'L|noline' => \$options{noline},
-		'strict' => \$options{strict},
-
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
@@ -169,6 +159,10 @@ EOF
 
 	print __(<<EOF);
   -V, --version               output version information and exit
+EOF
+
+	print __(<<EOF);
+  -v, --verbose               increase verbosity level
 EOF
 
 	printf "\n";
