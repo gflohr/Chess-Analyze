@@ -26,6 +26,12 @@ sub new {
 		unshift @input_files, $options;
 		$options = {};
 	}
+
+	if (!@input_files) {
+		require Carp;
+		Carp::croak(__"no input files");
+	}
+
 	my %options = $class->__defaultOptions;
 	foreach my $option (keys %$options) {
 		$options{$option} = $options->{$option};
@@ -61,6 +67,8 @@ sub newFromArgv {
 		exit 0;
 	}
 
+	$self->__usageError(__"no input files") if !@$argv;
+
 	return $class->new(\%options, @$argv);
 }
 
@@ -82,6 +90,7 @@ sub __getOptions {
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
+		'v|verbose' => \$options{verbose},
 	);
 	$options{line} = 1 if delete $options{noline};
 
