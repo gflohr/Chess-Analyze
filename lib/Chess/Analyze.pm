@@ -18,6 +18,7 @@ use common::sense;
 
 use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
+use Chess::PGN::Parse 0.20;
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -75,7 +76,32 @@ sub newFromArgv {
 sub programName { $0 }
 
 sub analyze {
-	die "todo";
+	my ($self) = @_;
+
+	foreach my $input_file (@{$self->{__input_files}}) {
+		$self->analyzeFile($input_file);
+	}
+}
+
+sub analyzeFile {
+	my ($self, $filename) = @_;
+
+	undef $!;
+	my $pgn = Chess::PGN::Parse->new($filename);
+	# Chess::PGN::Parse does check whether the file exists.  We therefore
+	# check the semi-private property 'fh'.
+	unless ($pgn && $pgn->{fh}) {
+		if ($!) {
+			die __x("error opening '{filename}': {error}!\n",
+			        filename => $filename, error => $!);
+		} else {
+			die __x("error parsing '{filename}'.\n");
+		}
+	}
+
+	while ($pgn->read_game) {
+		print "reading game\n";
+	}
 }
 
 sub __defaultOptions {}

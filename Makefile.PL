@@ -17,10 +17,16 @@ my %WriteMakefileArgs = (
     "Module::Build" => "0.28"
   },
   "DISTNAME" => "Chess-Analyze",
+  "EXE_FILES" => [
+    "bin/chess-analyze"
+  ],
   "LICENSE" => "unrestricted",
   "NAME" => "Chess::Analyze",
   "PREREQ_PM" => {
+    "Carp" => 0,
+    "Chess::PGN::Parse" => "0.20",
     "Getopt::Long" => "2.36",
+    "Locale::Messages" => 0,
     "Locale::TextDomain" => 0,
     "common::sense" => 0,
     "strict" => 0
@@ -33,7 +39,10 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
+  "Carp" => 0,
+  "Chess::PGN::Parse" => "0.20",
   "Getopt::Long" => "2.36",
+  "Locale::Messages" => 0,
   "Locale::TextDomain" => 0,
   "Module::Build" => "0.28",
   "common::sense" => 0,

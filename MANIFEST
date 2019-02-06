@@ -8,6 +8,7 @@ META.yml
 Makefile.PL
 README.md
 README.pod
+bin/chess-analyze
 dist.ini
 lib/Chess/Analyze.pm
 lib/Chess/Analyze.pod

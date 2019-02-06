@@ -24,11 +24,17 @@ my %module_build_args = (
   "module_name" => "Chess::Analyze",
   "recursive_test_files" => 1,
   "requires" => {
+    "Carp" => 0,
+    "Chess::PGN::Parse" => "0.20",
     "Getopt::Long" => "2.36",
+    "Locale::Messages" => 0,
     "Locale::TextDomain" => 0,
     "common::sense" => 0,
     "strict" => 0
-  }
+  },
+  "script_files" => [
+    "bin/chess-analyze"
+  ]
 );
 
 
