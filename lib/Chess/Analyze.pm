@@ -20,7 +20,8 @@ use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
 use Chess::Rep 0.8;
-use Time::HiRes;
+use Time::HiRes qw(gettimeofday);
+use POSIX qw(mktime);
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -223,7 +224,32 @@ sub analyzeMove {
 sub __startEngine {
 	my ($self) = @_;
 
+	$self->__log("starting engine");
+}
 
+sub __log {
+	my ($self, $msg) = @_;
+
+	return if !$self->{__options}->{verbose};
+
+	my ($sec, $usec) = gettimeofday;
+	my @now = localtime $sec;
+
+	$msg =~ s/[ \t\n]+$//;
+
+	my @wdays = (
+		"Sun", "Mon", "Tue", "Wed", "Tue", "Fri", "Sat"
+	);
+
+	my @months = (
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	);
+
+	printf STDERR "[%s %s %02u %02u:%02u:%02u.%06u %04u] %s\n",
+	              $wdays[$now[6]], $months[$now[4]],
+				  $now[3], $now[2], $now[1], $now[0], $usec, $now[5] + 1900,
+				  $msg;
 }
 
 sub __breakLines {
