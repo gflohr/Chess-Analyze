@@ -105,15 +105,22 @@ sub analyzeFile {
 		}
 	}
 
+	my $output = '';
 	while ($pgn->read_game) {
-		$self->analyzeGame($pgn);
+		$output .= $self->analyzeGame($pgn);
 	}
+
+print $output;
+
+	return $self;
 }
 
 sub analyzeGame {
 	my ($self, $pgn) = @_;
 
 	$pgn->parse_game({save_comments => 1});
+
+	my $tags = $pgn->tags;
 	my $moves = $pgn->moves;
 	my $num_moves = @$moves;
 	my $comments = $pgn->comments;
@@ -123,14 +130,80 @@ sub analyzeGame {
 	} else {
 		$last_move .= 'b';
 	}
-	my $result_comment = $comments->{$last_move} || '';
+	my $result_comment = $comments->{$last_move};
+
+	$comments = {};
+	$comments->{$last_move} = $result_comment if defined $result_comment;
+
 	my $pos = Chess::Rep->new;
 
 	foreach my $move (@$moves) {
 		$self->analyzeMove($pos, $move);
 	}
 
-	return $self;
+	my $output = '';
+
+	$tags->{Event} = '?' if !defined $tags->{Event};
+	$output .= $self->__printTag(Event => $tags->{Event});
+	$tags->{Site} = '?' if !defined $tags->{Site};
+	$output .= $self->__printTag(Site => $tags->{Site});
+	$tags->{Date} = '????.??.??' if !defined $tags->{Date};
+	$output .= $self->__printTag(Date => $tags->{Date});
+	$tags->{Round} = '?' if !defined $tags->{Round};
+	$output .= $self->__printTag(Round => $tags->{Round});
+	$tags->{White} = '?' if !defined $tags->{White};
+	$output .= $self->__printTag(White => $tags->{White});
+	$tags->{Black} = '?' if !defined $tags->{Black};
+	$output .= $self->__printTag(Black => $tags->{Black});
+
+	my %seen = (
+		Event => 1,
+		Site => 1,
+		Date => 1,
+		Round => 1,
+		White => 1,
+		Black => 1,
+		Result => 1,
+		Game => 1,
+	);
+
+	foreach my $tag (sort keys %$tags) {
+		next if $seen{$tag}++;
+		$output .= $self->__printTag($tag => $tags->{$tag});
+	}
+
+	$tags->{Result} = '*' if !defined $tags->{Result};
+	$output .= $self->__printTag(Result => $tags->{Result});
+	$output .= "\n";
+
+	my $move_str = '';
+
+	my $ply = 0;
+	my $move_number = 0;
+	foreach my $move (@$moves) {
+		my $color;
+		$move_str .= ' ' if $ply;
+		if (++$ply & 1) {
+			++$move_number;
+			$move_str .= "$move_number.";
+			$color = 'w';
+		} else {
+			$color = 'b';
+		}
+
+		$move_str .= " $move";
+
+		my $comment = $comments->{"$move_number$color"};
+		if (defined $comment) {
+			$move_str .= $comment;
+		}
+	}
+
+	$move_str .= " $tags->{Result}";
+
+	$output .= $self->__breakLines($move_str);
+
+	return $output . "\n";
 }
 
 sub analyzeMove {
@@ -138,6 +211,40 @@ sub analyzeMove {
 
 	my $fen = $pos->get_fen;
 	$pos->go_move($move);
+}
+
+sub __breakLines {
+	my ($self, $moves) = @_;
+
+$DB::single = 1;
+	my @moves = split //, $moves;
+	my $last_space = 0;
+	my $column = 0;
+	my $length = @moves;
+
+	for (my $i = 0; $i < $length; ++$i) {
+		if ($column >= 80) {
+			$moves[$last_space] = "\n";
+			$column = $i - $last_space;
+		} else {
+			if (' ' eq $moves[$i] && '.' ne $moves[$i - 1]
+			    && $moves[$i - 2] ge '0' && $moves[$i - 2] le '9') {
+				$last_space = $i;
+			}
+			++$column;
+		}
+	}
+
+	return join '', @moves;
+}
+
+sub __printTag {
+	my ($self, $name, $tag) = @_;
+
+	$name =~ s/([]\\])/\\$1/g;
+	$tag =~ s/(["\\])/\\$1/g;
+
+	return qq{[$name "$tag"]\n};
 }
 
 sub __defaultOptions {}
