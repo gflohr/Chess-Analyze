@@ -19,6 +19,7 @@ use common::sense;
 use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
+use Chess::Rep 0.8;
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -86,11 +87,16 @@ sub analyze {
 sub analyzeFile {
 	my ($self, $filename) = @_;
 
+	# Chess::PGN::Parse does check whether the file exists.  We therefore
+	# first check for existence and then the semi-private property 'fh'.
+	if (!-e $filename) {
+		die __x("error opening '{filename}': {error}!\n",
+		        filename => $filename, error => $!);
+	}
+
 	undef $!;
 	my $pgn = Chess::PGN::Parse->new($filename);
-	# Chess::PGN::Parse does check whether the file exists.  We therefore
-	# check the semi-private property 'fh'.
-	unless ($pgn && $pgn->{fh}) {
+	if (!($pgn && $pgn->{fh})) {
 		if ($!) {
 			die __x("error opening '{filename}': {error}!\n",
 			        filename => $filename, error => $!);
@@ -100,8 +106,38 @@ sub analyzeFile {
 	}
 
 	while ($pgn->read_game) {
-		print "reading game\n";
+		$self->analyzeGame($pgn);
 	}
+}
+
+sub analyzeGame {
+	my ($self, $pgn) = @_;
+
+	$pgn->parse_game({save_comments => 1});
+	my $moves = $pgn->moves;
+	my $num_moves = @$moves;
+	my $comments = $pgn->comments;
+	my $last_move = (($num_moves + 1) >> 1);
+	if ($num_moves & 1) {
+		$last_move .= 'w';
+	} else {
+		$last_move .= 'b';
+	}
+	my $result_comment = $comments->{$last_move} || '';
+	my $pos = Chess::Rep->new;
+
+	foreach my $move (@$moves) {
+		$self->analyzeMove($pos, $move);
+	}
+
+	return $self;
+}
+
+sub analyzeMove {
+	my ($self, $pos, $move) = @_;
+
+	my $fen = $pos->get_fen;
+	$pos->go_move($move);
 }
 
 sub __defaultOptions {}

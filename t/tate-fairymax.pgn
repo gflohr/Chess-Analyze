@@ -1,0 +1,19 @@
+[Site "?"]
+[Event "?"]
+[Date "2019.02.06]"
+[Event "?"]
+[White "tate v0.3.2"]
+[Black "Fairy-Max 4.8S"]
+[Result "0-1"]
+
+1. e4 d6 2. Nf3 c5 3. Bb5+ Nc6 4. d4 a6 5. Bxc6+ bxc6 6. dxc5 Qa5+ 7. Nc3 Qxc5
+8. Qd3 Bd7 9. Be3 Qb4 10. O-O-O f6 11. Nd2 Qb7 12. Nc4 Be6 13. Nb6 Rb8 14. b3
+Nh6 15. h3 g5 16. Qd4 Bg7 17. Kb1 O-O 18. Qd3 Nf7 19. h4 Ne5 20. Qe2 Ng4
+21. Nca4 Nxe3 22. Qxe3 h6 23. f3 Rf7 24. a3 Qc7 25. Ka2 f5 26. hxg5 hxg5
+27. Qxg5 Rxb6 28. Rh2 Rf6 29. Rdh1 Kf7 30. Rh7 Rg6 31. Qh5 Kf6 32. g4 Rb5
+33. Rh6 Bxh6 34. exf5 Bxf5 35. gxf5 Rxf5 36. Qh4+ Kf7 37. Qc4+ e6 38. Qxa6 Rxf3
+39. Qe2 Rf5 40. Rf1 Qa5 41. Rd1 Bf4 42. Nb2 Rh6 43. Qc4 c5 44. Rf1 d5 45. Qe2
+Rh2 46. Qd3 Rd2 47. Qh3 Rxc2 48. Qh7+ Ke8 49. Qh8+ Rf8 50. Qh5+ Rf7 51. Qg6 Qc3
+52. Qxe6+ Kd8 53. Qxd5+ Rd7 54. Qa8+ Ke7 55. Qe4+ Be5 56. Qh4+ Ke8 57. Qh5+ Kd8
+58. Qxe5 Rxb2+ 59. Ka1 Ra2+ 60. Kxa2 Rd2+ 61. Kb1 Qc2+ 62. Ka1 Qa2#
+{Black mates} 0-1
