@@ -20,6 +20,7 @@ use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
 use Chess::Rep 0.8;
+use Time::HiRes;
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -39,12 +40,18 @@ sub new {
 		$options{$option} = $options->{$option};
 	}
 
+	$options{engine} = ['stockfish'] if !defined $options{engine};
+
 	my $self = {
 		__options => \%options,
 		__input_files => \@input_files,
 	};
 
 	bless $self, $class;
+
+	$self->__startEngine;
+
+	return $self;
 }
 
 sub newFromArgv {
@@ -213,10 +220,15 @@ sub analyzeMove {
 	$pos->go_move($move);
 }
 
+sub __startEngine {
+	my ($self) = @_;
+
+
+}
+
 sub __breakLines {
 	my ($self, $moves) = @_;
 
-$DB::single = 1;
 	my @moves = split //, $moves;
 	my $last_space = 0;
 	my $column = 0;
@@ -247,7 +259,8 @@ sub __printTag {
 	return qq{[$name "$tag"]\n};
 }
 
-sub __defaultOptions {}
+sub __defaultOptions {
+}
 
 sub __getOptions {
 	my ($self, $argv) = @_;
@@ -256,6 +269,8 @@ sub __getOptions {
 
 	Getopt::Long::Configure('bundling');
 	GetOptionsFromArray($argv,
+		# Engine selection.
+		'e|engine=s@' => \$options{engine},
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
@@ -323,6 +338,18 @@ EOF
 	print __(<<EOF);
 Mandatory arguments to long options are mandatory for short options too.
 Similarly for optional arguments.
+EOF
+
+	print "\n";
+
+	print __(<<EOF);
+Engine selection and behavior:
+EOF
+
+	print __(<<EOF);
+  -e, --engine=ENGINE         use engine ENGINE (defaults to 'stockfish'); use
+                              subsequent '--engine' options for options and
+                              arguments to the engine
 EOF
 
 	print "\n";
