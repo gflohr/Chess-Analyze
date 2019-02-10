@@ -22,6 +22,8 @@ use Chess::PGN::Parse 0.20;
 use Chess::Rep 0.8;
 use Time::HiRes qw(gettimeofday);
 use POSIX qw(mktime);
+use IPC::Open2 qw(open2);
+use Symbol qw(gensym);
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -224,8 +226,31 @@ sub analyzeMove {
 sub __startEngine {
 	my ($self) = @_;
 
-	$self->__log("starting engine");
+	my @cmd = @{$self->{__options}->{engine}};
+	my $pretty_cmd = $self->__escapeCommand(@cmd);
+	$self->__log("starting engine '$pretty_cmd'");
+
+	$SIG{CHLD} = 'IGNORE';
+
+	my $in = $self->{__engine_in} = gensym;
+	my $out = $self->{__engine_out} = gensym;
+	#my $pid = $self->{__engine_pid} = open3 $in, $out, @cmd;
 }
+
+sub __escapeCommand {
+	my ($self, @command) = @_;
+
+	my @escaped;
+	foreach my $part (@command) {
+		my $pretty = $part;
+		$pretty =~ s{(["\\\$])}{\\$1}g;
+		$pretty = qq{"$pretty"} if $pretty =~ /[ \t]/;
+		push @escaped, $pretty;
+	}
+
+	return join ' ', @escaped;
+}
+
 
 sub __log {
 	my ($self, $msg) = @_;
@@ -250,6 +275,18 @@ sub __log {
 	              $wdays[$now[6]], $months[$now[4]],
 				  $now[3], $now[2], $now[1], $now[0], $usec, $now[5] + 1900,
 				  $msg;
+}
+
+sub __logInput {
+	my ($self, $line) = @_;
+
+	return $self->__log(" <<< $line");
+}
+
+sub __logInput {
+	my ($self, $line) = @_;
+
+	return $self->__log(" >>> $line");
 }
 
 sub __breakLines {
