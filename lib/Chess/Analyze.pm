@@ -297,15 +297,54 @@ sub analyzeMove {
 	$pos->go_move($move)
 		or $self->__fatal(__x("cannot apply move '{move}'",
 			                  move => $move));
-	$copy->go_move($move)
+	my %move_info = $copy->go_move($info{bestmove})
 		or $self->__fatal(__x("cannot apply best move '{move}'",
 		                      move => $info{bestmove}));
 
 	if ($copy->get_fen ne $pos->get_fen) {
 		# Not the best move.
+		my @pv = $move_info{san}, $self->__convertPV($copy, $info{pv});
+		@pv = $self->__numberMoves($copy, @pv);
+		my $pv = join ' ', @pv;
 	}
 
 	return $self;
+}
+
+sub __numberMoves {
+	my ($self, $pos, @pv) = @_;
+
+	return '' if !@pv;
+	$pos = dclone $pos;
+	my $prefix = $pos->{fullmove} . '. ';
+	if ($pos->to_move != 0) {
+		$prefix .= '... ';
+	}
+	$pv[0] = $prefix . $pv[0];
+	for (my $i = 1; $i < @pv; ++$i) {
+		my %move_info = $pos->go_move($pv[$i]);
+		if (%move_info) {
+			$pv[$i] = $move_info{san};
+		}
+		if ($pos->to_move == 0) {
+			$pv[$i] = "$pos->{fullmove}. $pv[$i]";
+		}
+	}
+
+	return @pv;
+}
+
+sub __convertPV {
+	my ($self, $pos, $pv) = @_;
+
+	$pos = dclone $pos;
+	my @pv = split /[ \t]/, $pv;
+	foreach my $move (@pv) {
+		my %move_info = $pos->go_move($move) or last;
+		$move = $move_info{san};
+	}
+
+	return @pv;
 }
 
 sub __parseEnginePostOutput {
@@ -330,7 +369,7 @@ sub __parseEnginePostOutput {
 		chomp $line;
 		$self->__logInput($line);
 
-		my ($first, $rest) = split /[ \t]+/, $line;
+		my ($first, $rest) = split /[ \t]+/, $line, 2;
 		if ("info" eq $first) {
 			my $info = $self->__parseInfo($rest);
 			if (exists $info->{mate}) {
@@ -375,12 +414,7 @@ sub __parseInfo {
 			delete $left{$first};
 			my $left_re = join '|', keys %left;
 			if ($spec =~ s/(.*?)(?=(?:$left_re|\z))//) {
-				if ($first eq 'var') {
-					$tokens{var} ||= {};
-					$tokens{var}->{$self->__trim($1)} = 1;
-				} else {
-					$tokens{$first} = $self->__trim($1);
-				}
+				$tokens{$first} = $self->__trim($1);
 			}
 		} else {
 			last;
