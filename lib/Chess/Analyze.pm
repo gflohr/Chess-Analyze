@@ -318,8 +318,13 @@ sub analyzeMove {
 	}
 
 	$self->__fatal(__"error waiting for 'bestmove'") if !$bestmove;
+	my $copy = dclone $pos;
 
 	$pos->go_move($move);
+
+	if ($copy->get_fen ne $pos->get_fen) {
+		# Not the best move.
+	}
 
 	return $self;
 }
