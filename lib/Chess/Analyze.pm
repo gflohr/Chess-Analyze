@@ -375,11 +375,7 @@ sub __startEngine {
 	my $pid = $self->{__engine_pid} = open2 $out, $in, @cmd;
 
 	# Initialize engine.
-	$self->__logOutput("uci\n");
-	$in->print("uci\n") or
-		return $self->__fatal(__x("failure to send command to"
-		                          . " engine: {error}",
-		                          error => $!));
+	$self->__sendCommand("uci") or return;
 	
 	my $uciok_seen;
 	$SIG{ALRM} = sub {
@@ -420,11 +416,7 @@ sub __startEngine {
 		$self->__setOption($option) or return;
 	}
 
-	$self->__logOutput("isready\n");
-	$in->print("isready\n") or
-		return $self->__fatal(__x("failure to send command to"
-		                          . " engine: {error}",
-		                          error => $!));
+	$self->__sendCommand("isready") or return;
 
 	my $readyok_seen;
 	$SIG{ALRM} = sub {
@@ -451,7 +443,7 @@ sub __sendCommand {
 	my ($self, $command) = @_;
 
 	$self->__logOutput("$command\n");
-	$self->{__engine_in}->print("uci\n") or
+	$self->{__engine_in}->print("$command\n") or
 		return $self->__fatal(__x("failure to send command to"
 		                          . " engine: {error}",
 		                          error => $!));
@@ -472,7 +464,7 @@ sub __setStringOption {
 		                      name => $name, max => $value));
 	}
 
-	$self->__sendCommand("setoption name $name $value\n") or return;
+	$self->__sendCommand("setoption name $name value $value") or return;
 
 	return $self;
 }
@@ -497,7 +489,7 @@ sub __setSpinOption {
 		                      name => $name, max => $value));
 	}
 
-	$self->__sendCommand("setoption name $name $value\n") or return;
+	$self->__sendCommand("setoption name $name value $value") or return;
 
 	return $self;
 }
@@ -511,7 +503,7 @@ sub __setCheckOption {
 		return $self;
 	}
 
-	$self->__sendCommand("setoption name $name $value\n") or return;
+	$self->__sendCommand("setoption name $name value $value") or return;
 
 	return $self;
 }
@@ -525,7 +517,7 @@ sub __setComboOption {
 		return $self;
 	}
 
-	$self->__sendCommand("setoption name $name $value\n") or return;
+	$self->__sendCommand("setoption name $name value $value") or return;
 
 	return $self;
 }
@@ -542,7 +534,7 @@ sub __setOption {
 	}
 
 	if ('button' eq $option->{type}) {
-		$self->__sendCommand("setoption name $option->{name}\n")
+		$self->__sendCommand("setoption name $option->{name}")
 			or return;
 	} elsif ('string' eq $option->{type}) {
 		$self->__setStringOption($name, $option, $value)
