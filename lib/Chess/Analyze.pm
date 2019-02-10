@@ -277,6 +277,8 @@ sub __fatal {
 	$self->{__options}->{verbose} = 1;
 	$self->__log($msg);
 
+	$self->DESTROY;
+
 	return;
 }
 
@@ -329,7 +331,13 @@ sub __startEngine {
 	                              error => $!));
 	
 	my $uciok_seen;
-	while (1) {
+	my $give_up;
+	$SIG{ALRM} = sub {
+		$DB::single = 1;
+		$self->__fatal(__"engine did not send 'uciok' within 10 seconds");
+	};
+	alarm 2;
+	while (!$give_up) {
 		my $line = $out->getline;
 		last if !defined $line;
 		$self->__logInput($line);
@@ -340,6 +348,7 @@ sub __startEngine {
 			last;
 		}
 	}
+	alarm 0;
 
 	return $self->__fatal(__x("error waiting for engine to send 'uciok':"
 	                          . " {error}", error => $!))
