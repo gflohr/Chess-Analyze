@@ -26,6 +26,7 @@ use IPC::Open2 qw(open2);
 use Symbol qw(gensym);
 use POSIX qw(:sys_wait_h);
 use Config;
+use Scalar::Util 1.10 qw(looks_like_number);
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -299,7 +300,12 @@ sub __parseEngineOption {
 			delete $left{$first} unless 'var' eq $first;
 			my $left_re = join '|', keys %left;
 			if ($spec =~ s/(.*?)(?=(?:$left_re|\z))//) {
-				$tokens{$first} = $1;
+				if ($first eq 'var') {
+					$tokens{var} ||= {};
+					$tokens{var}->{$self->__trim($1)} = 1;
+				} else {
+					$tokens{$first} = $self->__trim($1);
+				}
 			}
 		} else {
 			last;
@@ -411,7 +417,7 @@ sub __startEngine {
 
 	my $options = $self->{__options}->{option};
 	foreach my $option (@$options) {
-		$self->__setOption($option);
+		$self->__setOption($option) or return;
 	}
 
 	$self->__logOutput("isready\n");
@@ -441,8 +447,118 @@ sub __startEngine {
 	return $self;
 }
 
+sub __sendCommand {
+	my ($self, $command) = @_;
+
+	$self->__logOutput("$command\n");
+	$self->{__engine_in}->print("uci\n") or
+		return $self->__fatal(__x("failure to send command to"
+		                          . " engine: {error}",
+		                          error => $!));
+
+	return $self;
+}
+
+sub __setStringOption {
+	my ($self, $name, $option, $value) = @_;
+
+	if (exists $option->{min} && $value lt $option->{min}) {
+		$value = $option->{min};
+		$self->__logError(__x("error: minimum value for option '{name}' is '{min}'",
+		                      name => $name, min => $value));
+	} elsif (exists $option->{max} && $value gt $option->{max}) {
+		$value = $option->{max};
+		$self->__logError(__x("error: maximum value for option '{name}' is '{max}'",
+		                      name => $name, max => $value));
+	}
+
+	$self->__sendCommand("setoption name $name $value\n") or return;
+
+	return $self;
+}
+
+sub __setSpinOption {
+	my ($self, $name, $option, $value) = @_;
+
+	if ((exists $option->{min} || exists $option->{max})
+	    && !looks_like_number $value) {
+		$self->__logError(__x("error: engine option '{name}' expects a numeric value",
+		                      name => $name));
+		return $self;
+	}
+
+	if (exists $option->{min} && $value < $option->{min}) {
+		$value = $option->{min};
+		$self->__logError(__x("error: minimum value for option '{name}' is '{min}'",
+		                      name => $name, min => $value));
+	} elsif (exists $option->{max} && $value > $option->{max}) {
+		$value = $option->{max};
+		$self->__logError(__x("error: maximum value for option '{name}' is '{max}'",
+		                      name => $name, max => $value));
+	}
+
+	$self->__sendCommand("setoption name $name $value\n") or return;
+
+	return $self;
+}
+
+sub __setCheckOption {
+	my ($self, $name, $option, $value) = @_;
+
+	if ($value ne 'true' && $value ne 'false') {
+		$self->__logError(__x("error: option '{name}' expects either 'true' or 'false'",
+		                      name => $name));
+		return $self;
+	}
+
+	$self->__sendCommand("setoption name $name $value\n") or return;
+
+	return $self;
+}
+
+sub __setComboOption {
+	my ($self, $name, $option, $value) = @_;
+
+	if (!exists $option->{var}->{$value}) {
+		$self->__logError(__x("error: option '{name}' expects either 'true' or 'false'",
+		                      $name, $value));
+		return $self;
+	}
+
+	$self->__sendCommand("setoption name $name $value\n") or return;
+
+	return $self;
+}
+
 sub __setOption {
 	my ($self, $spec) = @_;
+
+	my ($name, $value) = split /=/, $spec, 2;
+	my $option = $self->{__engine_options}->{$name};
+	if (!$option) {
+		$self->__logError(__x("error: engine does not support option '{name}'",
+		                      name => $name));
+		return $self;
+	}
+
+	if ('button' eq $option->{type}) {
+		$self->__sendCommand("setoption name $option->{name}\n")
+			or return;
+	} elsif ('string' eq $option->{type}) {
+		$self->__setStringOption($name, $option, $value)
+			or return;
+	} elsif ('spin' eq $option->{type}) {
+		$self->__setSpinOption($name, $option, $value)
+			or return;
+	} elsif ('check' eq $option->{type}) {
+		$self->__setCheckOption($name, $option, $value)
+			or return;
+	} elsif ('combo' eq $option->{type}) {
+		$self->__setComboOption($name, $option, $value)
+			or return;
+	}
+
+	return $self;
 }
 
 sub __trim {
