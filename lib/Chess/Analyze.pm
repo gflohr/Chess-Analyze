@@ -346,7 +346,6 @@ sub __startEngine {
 		do {
 			$pid = waitpid -1, WNOHANG;
 			if ($self->{__engine_pid} && $pid == $self->{__engine_pid}) {
-				$self->{__options}->{verbose} = 9999;
 				if ($? == -1) {
 					$self->__logError(__x("failed to execute '{cmd}': {error}",
 					                      cmd => $pretty_cmd, error => $!));
@@ -422,6 +421,22 @@ sub __startEngine {
 		                          error => $!));
 
 	my $readyok_seen;
+	$SIG{ALRM} = sub {
+		$self->__fatal(__"engine did not send 'readyok' within 10 seconds");
+	};
+	alarm 10 if !defined &DB::DB;
+	while (1) {
+		my $line = $out->getline;
+		last if !defined $line;
+		$self->__logInput($line);
+		$line = $self->__trim($line);
+
+		if ("readyok" eq $line) {
+			$readyok_seen = 1;
+			last;
+		}
+	}
+	alarm 0;
 
 	return $self;
 }
