@@ -88,6 +88,12 @@ sub newFromArgv {
 
 sub programName { $0 }
 
+sub _exit {
+	my ($self, $code) = @_;
+
+	exit $code;
+}
+
 sub DESTROY {
 	my ($self) = @_;
 
@@ -100,7 +106,7 @@ sub DESTROY {
 			do {
 				$child_pid = waitpid -1, WNOHANG;
 				if ($child_pid == $pid) {
-					exit 0;
+					$self->_exit(0);
 				}
 			} while $child_pid > 0;
 		};
@@ -118,7 +124,7 @@ sub DESTROY {
 		kill $SIG{KILL} => $pid;
 		sleep 2;
 		$self->__log(__"giving up terminating engine, exit");
-		exit 1;
+		$self->_exit(1);
 	}
 }
 
@@ -291,7 +297,7 @@ sub __startEngine {
 					                 $? >> 8));
 				}
 
-				exit 1;
+				$self->_exit(1);
 			}
 		} while $pid > 0;
 	};
