@@ -50,6 +50,7 @@ sub new {
 	my $self = {
 		__options => \%options,
 		__input_files => \@input_files,
+		__analyzer => $options{engine}->[0],
 	};
 
 	bless $self, $class;
@@ -217,6 +218,7 @@ sub analyzeGame {
 		Black => 1,
 		Result => 1,
 		Game => 1,
+		Analyzer => 1,
 	);
 
 	foreach my $tag (sort keys %$tags) {
@@ -224,6 +226,10 @@ sub analyzeGame {
 		$output .= $self->__printTag($tag => $tags->{$tag});
 	}
 
+
+	if (defined $self->{__analyzer}) {
+		$output .= $self->__printTag(Analyzer => $self->{__analyzer});
+	}
 	$tags->{Result} = '*' if !defined $tags->{Result};
 	$output .= $self->__printTag(Result => $tags->{Result});
 	$output .= "\n";
@@ -263,6 +269,15 @@ sub analyzeMove {
 
 	my $fen = $pos->get_fen;
 	$pos->go_move($move);
+}
+
+sub __fatal {
+	my ($self, $msg) = @_;
+
+	$self->{__options}->{verbose} = 1;
+	$self->__log($msg);
+
+	return;
 }
 
 sub __startEngine {
@@ -306,6 +321,40 @@ sub __startEngine {
 	my $out = $self->{__engine_out} = gensym;
 	my $pid = $self->{__engine_pid} = open2 $out, $in, @cmd;
 
+	# Initialize engine.
+	$self->__logOutput("uci\n");
+	$in->print("uci\n") or
+		return $self->__fatal(__x("failure to send command to"
+	                              . " engine: {error}",
+	                              error => $!));
+	
+	my $uciok_seen;
+	while (1) {
+		my $line = $out->getline;
+		last if !defined $line;
+		$self->__logInput($line);
+		$line = $self->__trim($line);
+
+		if ("uciok" eq $line) {
+			$uciok_seen = 1;
+			last;
+		}
+	}
+
+	return $self->__fatal(__x("error waiting for engine to send 'uciok':"
+	                          . " {error}", error => $!))
+		if !$uciok_seen;
+
+	return $self;
+}
+
+sub __trim {
+	my ($self, $line) = @_;
+
+	$line =~ s/^[ \t\r\n]*//;
+	$line =~ s/[ \t\r\n]*$//;
+
+	return  $line;
 }
 
 sub __escapeCommand {
@@ -354,7 +403,7 @@ sub __logInput {
 	return $self->__log("<<< $line");
 }
 
-sub __logInput {
+sub __logOutput {
 	my ($self, $line) = @_;
 
 	return $self->__log(">>> $line");
