@@ -260,13 +260,13 @@ sub analyzeGame {
 		$move_str .= ' ' if $ply;
 		if (++$ply & 1) {
 			++$move_number;
-			$move_str .= "$move_number.";
+			$move_str .= "$move_number. ";
 			$color = 'w';
 		} else {
 			$color = 'b';
 		}
 
-		$move_str .= " $move";
+		$move_str .= "$move";
 
 		my $comment = $comments->{"$move_number$color"};
 		if (defined $comment) {
