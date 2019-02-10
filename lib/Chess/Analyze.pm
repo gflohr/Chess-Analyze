@@ -44,6 +44,9 @@ sub new {
 	foreach my $option (keys %$options) {
 		$options{$option} = $options->{$option};
 	}
+	if (!$options{depth} && !$options{seconds}) {
+		$options{seconds} = 30;
+	}
 
 	$options{engine} = ['stockfish'] if !defined $options{engine};
 
@@ -84,6 +87,16 @@ sub newFromArgv {
 	}
 
 	$self->__usageError(__"no input files") if !@$argv;
+	$self->__usageError(__"option '--seconds' must be a positive integer")
+		if defined $options{seconds} && $options{seconds} <= 0;
+	$self->__usageError(__"option '--memory' must be a positive integer")
+		if defined $options{memory} && $options{memory} <= 0;
+	$self->__usageError(__"the options '--seconds' and '--depth' are mutually exclusive")
+		if defined $options{seconds} && defined $options{depth};
+	$self->__usageError(__"option '--seconds' must be a positive integer")
+		if defined $options{seconds} && $options{seconds} <= 0;
+	$self->__usageError(__"option '--depth' must be a positive integer")
+		if defined $options{depth} && $options{depth} <= 0;
 
 	return $class->new(\%options, @$argv);
 }
@@ -495,6 +508,7 @@ sub __printTag {
 }
 
 sub __defaultOptions {
+	memory => 1024,
 }
 
 sub __getOptions {
@@ -504,24 +518,17 @@ sub __getOptions {
 
 	Getopt::Long::Configure('bundling');
 	GetOptionsFromArray($argv,
-		# Engine selection.
+		# Engine selection and behavior.
 		'e|engine=s@' => \$options{engine},
+		'm|memory=i' => \$options{memory},
+		'o|option=s@' => \$options{option},
+		's|seconds=i' => \$options{seconds},
+		'd|depth=i' => \$options{depth},
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
 		'v|verbose' => \$options{verbose},
 	);
-	$options{line} = 1 if delete $options{noline};
-
-	if ($options{encoding} =~ /[\\\)]/) {
-		$self->__fatal(__x("invalid encoding '{encoding}'!",
-							encoding => $options{encoding}));
-	}
-
-	if (defined $options{outfile} && defined $options{stdout}) {
-		$self->__fatal(__("the options '--outfile' and '--stdout' are"
-							. " mutually exclusive!"));
-	}
 
 	return %options;
 }
@@ -585,6 +592,18 @@ EOF
   -e, --engine=ENGINE         use engine ENGINE (defaults to 'stockfish'); use
                               subsequent '--engine' options for options and
                               arguments to the engine
+EOF
+
+	print __(<<EOF);
+  -s, --seconds=SECONDS       think SECONDS seconds per half-move (default 30)
+EOF
+
+	print __(<<EOF);
+  -m, --memory=MEGABYTES      allocate MEGABYTES memory for hashes etc.
+EOF
+
+	print __(<<EOF);
+  -o, --option=NAME=VALUE     set engine option NAME to VALUE
 EOF
 
 	print "\n";
