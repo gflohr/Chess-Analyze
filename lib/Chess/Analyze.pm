@@ -27,6 +27,8 @@ use Symbol qw(gensym);
 use POSIX qw(:sys_wait_h);
 use Config;
 use Scalar::Util 1.10 qw(looks_like_number);
+# FIXME! Which version of 
+use Storable qw(dclone);
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -177,7 +179,7 @@ sub analyzeFile {
 
 	my $output = '';
 	while ($pgn->read_game) {
-		$output .= $self->analyzeGame($pgn);
+		$output .= $self->analyzeGame($pgn) or return;
 	}
 
 print $output;
@@ -208,7 +210,7 @@ sub analyzeGame {
 	my $pos = Chess::Rep->new;
 
 	foreach my $move (@$moves) {
-		$self->analyzeMove($pos, $move);
+		$self->analyzeMove($pos, $move) or return;
 	}
 
 	my $output = '';
@@ -285,8 +287,43 @@ sub analyzeMove {
 	my ($self, $pos, $move) = @_;
 
 	my $fen = $pos->get_fen;
+	$self->__sendCommand("position fen $fen") or return;
+
+	my @command = ('go');
+	if ($self->{__options}->{depth}) {
+		push @command, 'depth', $self->{__options}->{depth};
+	} else {
+		push @command, 'movetime', 1000 * $self->{__options}->{seconds};
+	}
+
+	$self->__sendCommand(join ' ', @command) or return;
+
+	my $bestmove;
+	while (1) {
+		my $line = $self->{__engine_out}->getline;
+		if (!defined $line) {
+			$self->__fatal(__x("error: failure reading from engine: {error}",
+			             ));
+		}
+		chomp $line;
+		$self->__logInput($line);
+
+		my ($first, $rest) = split /[ \t]+/, $line;
+		if ("info" eq $first) {
+
+		} elsif ("bestmove" eq $first) {
+			($bestmove) = split /[ \t]+/, $rest, 2;
+			last;
+		}
+	}
+
+	$self->__fatal(__"error waiting for 'bestmove'") if !$bestmove;
+
 	$pos->go_move($move);
+
+	return $self;
 }
+
 
 sub __parseEngineOption {
 	my ($self, $spec) = @_;
