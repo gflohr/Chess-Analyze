@@ -24,6 +24,8 @@ use Time::HiRes qw(gettimeofday);
 use POSIX qw(mktime);
 use IPC::Open2 qw(open2);
 use Symbol qw(gensym);
+use POSIX qw(:sys_wait_h);
+use Config;
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -85,6 +87,40 @@ sub newFromArgv {
 }
 
 sub programName { $0 }
+
+sub DESTROY {
+	my ($self) = @_;
+
+	if ($self->{__engine_pid}) {
+		my $pid = $self->{__engine_pid};
+		undef $self->{__engine_pid};
+
+		$SIG{CHLD} = sub {
+			my $child_pid;
+			do {
+				$child_pid = waitpid -1, WNOHANG;
+				if ($child_pid == $pid) {
+					exit 0;
+				}
+			} while $child_pid > 0;
+		};
+		$self->__logInput("quit\n");
+		$self->{__engine_in}->print("quit\n");
+		sleep 2;
+		$self->{__options}->{verbose} = 1;
+		$self->__log(__"sending SIGTERM to engine");
+		kill $SIG{TERM} => $pid;
+		sleep 2;
+		$self->__log(__"sending SIGQUIT to engine");
+		kill $SIG{QUIT} => $pid;
+		sleep 2;
+		$self->__log(__"sending SIGKILL to engine");
+		kill $SIG{KILL} => $pid;
+		sleep 2;
+		$self->__log(__"giving up terminating engine, exit");
+		exit 1;
+	}
+}
 
 sub analyze {
 	my ($self) = @_;
@@ -230,11 +266,40 @@ sub __startEngine {
 	my $pretty_cmd = $self->__escapeCommand(@cmd);
 	$self->__log("starting engine '$pretty_cmd'");
 
-	$SIG{CHLD} = 'IGNORE';
+	my @signame;
+	my $i = 0;
+	foreach my $name (split ' ', $Config{sig_name} || '') {
+		$signame[$i] = $name;
+	}
+
+	$SIG{CHLD} = sub {
+		my $pid;
+		do {
+			$pid = waitpid -1, WNOHANG;
+			if ($self->{__engine_pid} && $pid == $self->{__engine_pid}) {
+				$self->{__options}->{verbose} = 9999;
+				if ($? == -1) {
+					$self->__log(__x("failed to execute '{cmd}': {error}",
+					                 cmd => $pretty_cmd, error => $!));
+				} elsif ($? & 127) {
+					my $signal = $signame[$? & 127];
+					$signal = __"unknown signal" if !defined $signal;
+					$self->__log(__x("child died with signal '{signal}'",
+					                 $signal));
+				} else {
+					$self->__log(__x("child terminated with exit code {code}",
+					                 $? >> 8));
+				}
+
+				exit 1;
+			}
+		} while $pid > 0;
+	};
 
 	my $in = $self->{__engine_in} = gensym;
 	my $out = $self->{__engine_out} = gensym;
-	#my $pid = $self->{__engine_pid} = open3 $in, $out, @cmd;
+	my $pid = $self->{__engine_pid} = open2 $out, $in, @cmd;
+
 }
 
 sub __escapeCommand {
@@ -280,13 +345,13 @@ sub __log {
 sub __logInput {
 	my ($self, $line) = @_;
 
-	return $self->__log(" <<< $line");
+	return $self->__log("<<< $line");
 }
 
 sub __logInput {
 	my ($self, $line) = @_;
 
-	return $self->__log(" >>> $line");
+	return $self->__log(">>> $line");
 }
 
 sub __breakLines {
