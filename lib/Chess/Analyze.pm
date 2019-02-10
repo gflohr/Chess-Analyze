@@ -336,7 +336,7 @@ sub __startEngine {
 		$DB::single = 1;
 		$self->__fatal(__"engine did not send 'uciok' within 10 seconds");
 	};
-	alarm 2;
+	alarm 10 if !defined &DB::DB;
 	while (!$give_up) {
 		my $line = $out->getline;
 		last if !defined $line;
@@ -346,6 +346,16 @@ sub __startEngine {
 		if ("uciok" eq $line) {
 			$uciok_seen = 1;
 			last;
+		}
+
+		my ($directive, $args) = split /[ \t]+/, $line, 2;
+		if ('id' eq $directive) {
+			($directive, $args) = split /[ \t]+/, $args, 2;
+			if ('name' eq $directive && defined $args) {
+				$self->__log(__x("engine now known as '{name}'",
+				                 name => $args));
+				$self->{__analyzer} = $args;
+			}
 		}
 	}
 	alarm 0;
