@@ -48,7 +48,7 @@ sub new {
 		$options{$option} = $options->{$option};
 	}
 	if (!$options{depth} && !$options{seconds}) {
-		$options{seconds} = 30;
+		$options{seconds} = 3;
 	}
 
 	$options{engine} = ['stockfish'] if !defined $options{engine};
@@ -289,6 +289,28 @@ sub analyzeMove {
 	my $fen = $pos->get_fen;
 	$self->__sendCommand("position fen $fen") or return;
 
+	my %info = $self->__parseEnginePostOutput($pos, $fen, $move)
+		or return;
+
+	my $copy = dclone $pos;
+
+	$pos->go_move($move)
+		or $self->__fatal(__x("cannot apply move '{move}'",
+			                  move => $move));
+	$copy->go_move($move)
+		or $self->__fatal(__x("cannot apply best move '{move}'",
+		                      move => $info{bestmove}));
+
+	if ($copy->get_fen ne $pos->get_fen) {
+		# Not the best move.
+	}
+
+	return $self;
+}
+
+sub __parseEnginePostOutput {
+	my ($self, $pos, $fen, $move) = @_;
+
 	my @command = ('go');
 	if ($self->{__options}->{depth}) {
 		push @command, 'depth', $self->{__options}->{depth};
@@ -298,37 +320,75 @@ sub analyzeMove {
 
 	$self->__sendCommand(join ' ', @command) or return;
 
-	my $bestmove;
+	my %result;
 	while (1) {
 		my $line = $self->{__engine_out}->getline;
 		if (!defined $line) {
 			$self->__fatal(__x("error: failure reading from engine: {error}",
-			             ));
+			                   error => $!));
 		}
 		chomp $line;
 		$self->__logInput($line);
 
 		my ($first, $rest) = split /[ \t]+/, $line;
 		if ("info" eq $first) {
+			my $info = $self->__parseInfo($rest);
+			if (exists $info->{mate}) {
+				delete $result{cp};
+				$result{mate} = $info->{mate};
+			}
 
+			if (exists $info->{cp} && !exists $result{mate}) {
+				$result{cp} = $info->{cp};
+			}
+
+			if (exists $info->{pv}) {
+				$result{pv} = $info->{pv};
+			}
 		} elsif ("bestmove" eq $first) {
-			($bestmove) = split /[ \t]+/, $rest, 2;
+			($result{bestmove}) = split /[ \t]+/, $rest, 2;
 			last;
 		}
 	}
 
-	$self->__fatal(__"error waiting for 'bestmove'") if !$bestmove;
-	my $copy = dclone $pos;
+	return $self->__fatal(__"error waiting for 'bestmove'")
+		if !exists $result{bestmove};
 
-	$pos->go_move($move);
-
-	if ($copy->get_fen ne $pos->get_fen) {
-		# Not the best move.
-	}
-
-	return $self;
+	return %result;
 }
 
+sub __parseInfo {
+	my ($self, $spec) = @_;
+
+	my %tokens;
+	my %left = map { $_ => 1 } qw(depth seldepth time nodes pv multipv cp mate
+	                              lowerbound upperbound currmove currmovenumber
+	                              hashfull nps tbhits cpuload refutation
+								  currline);
+	while (1) {
+		my $first;
+		($first, $spec) = split /[ \t]+/, $spec, 2;
+		if ("string" eq $first) {
+			$tokens{string} = $spec;
+			last;
+		} elsif ($left{$first}) {
+			delete $left{$first};
+			my $left_re = join '|', keys %left;
+			if ($spec =~ s/(.*?)(?=(?:$left_re|\z))//) {
+				if ($first eq 'var') {
+					$tokens{var} ||= {};
+					$tokens{var}->{$self->__trim($1)} = 1;
+				} else {
+					$tokens{$first} = $self->__trim($1);
+				}
+			}
+		} else {
+			last;
+		}
+	}
+
+	return \%tokens;
+}
 
 sub __parseEngineOption {
 	my ($self, $spec) = @_;
