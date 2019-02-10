@@ -57,6 +57,8 @@ sub new {
 		__engine_options => {},
 	};
 
+	unshift @{$options{option}}, "Hash=$options{memory}";
+
 	bless $self, $class;
 
 	$self->__startEngine;
@@ -319,8 +321,7 @@ sub __parseEngineOption {
 sub __fatal {
 	my ($self, $msg) = @_;
 
-	$self->{__options}->{verbose} = 1;
-	$self->__log($msg);
+	$self->__logError($msg);
 
 	$self->DESTROY;
 
@@ -347,16 +348,16 @@ sub __startEngine {
 			if ($self->{__engine_pid} && $pid == $self->{__engine_pid}) {
 				$self->{__options}->{verbose} = 9999;
 				if ($? == -1) {
-					$self->__log(__x("failed to execute '{cmd}': {error}",
-					                 cmd => $pretty_cmd, error => $!));
+					$self->__logError(__x("failed to execute '{cmd}': {error}",
+					                      cmd => $pretty_cmd, error => $!));
 				} elsif ($? & 127) {
 					my $signal = $signame[$? & 127];
 					$signal = __"unknown signal" if !defined $signal;
-					$self->__log(__x("child died with signal '{signal}'",
-					                 $signal));
+					$self->__logError(__x("child died with signal '{signal}'",
+					                      $signal));
 				} else {
-					$self->__log(__x("child terminated with exit code {code}",
-					                 $? >> 8));
+					$self->__logError(__x("child terminated with exit code {code}",
+					                      $? >> 8));
 				}
 
 				$self->_exit(1);
@@ -372,17 +373,15 @@ sub __startEngine {
 	$self->__logOutput("uci\n");
 	$in->print("uci\n") or
 		return $self->__fatal(__x("failure to send command to"
-	                              . " engine: {error}",
-	                              error => $!));
+		                          . " engine: {error}",
+		                          error => $!));
 	
 	my $uciok_seen;
-	my $give_up;
 	$SIG{ALRM} = sub {
-		$DB::single = 1;
 		$self->__fatal(__"engine did not send 'uciok' within 10 seconds");
 	};
 	alarm 10 if !defined &DB::DB;
-	while (!$give_up) {
+	while (1) {
 		my $line = $out->getline;
 		last if !defined $line;
 		$self->__logInput($line);
@@ -411,7 +410,24 @@ sub __startEngine {
 	                          . " {error}", error => $!))
 		if !$uciok_seen;
 
+	my $options = $self->{__options}->{option};
+	foreach my $option (@$options) {
+		$self->__setOption($option);
+	}
+
+	$self->__logOutput("isready\n");
+	$in->print("isready\n") or
+		return $self->__fatal(__x("failure to send command to"
+		                          . " engine: {error}",
+		                          error => $!));
+
+	my $readyok_seen;
+
 	return $self;
+}
+
+sub __setOption {
+	my ($self, $spec) = @_;
 }
 
 sub __trim {
@@ -437,10 +453,8 @@ sub __escapeCommand {
 	return join ' ', @escaped;
 }
 
-sub __log {
+sub __logError {
 	my ($self, $msg) = @_;
-
-	return if !$self->{__options}->{verbose};
 
 	my ($sec, $usec) = gettimeofday;
 	my @now = localtime $sec;
@@ -460,6 +474,14 @@ sub __log {
 	              $wdays[$now[6]], $months[$now[4]],
 				  $now[3], $now[2], $now[1], $now[0], $usec, $now[5] + 1900,
 				  $msg;
+}
+
+sub __log {
+	my ($self, $msg) = @_;
+
+	return if !$self->{__options}->{verbose};
+
+	return $self->__logError($msg);
 }
 
 sub __logInput {
