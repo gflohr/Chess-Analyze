@@ -51,6 +51,7 @@ sub new {
 		__options => \%options,
 		__input_files => \@input_files,
 		__analyzer => $options{engine}->[0],
+		__engine_options => {},
 	};
 
 	bless $self, $class;
@@ -271,6 +272,37 @@ sub analyzeMove {
 	$pos->go_move($move);
 }
 
+sub __parseEngineOption {
+	my ($self, $spec) = @_;
+
+	my %tokens;
+	my %left = map { $_ => 1 } qw(name type default min max var);
+	while (1) {
+		my $first;
+		($first, $spec) = split /[ \t]+/, $spec, 2;
+		if ($left{$first}) {
+			delete $left{$first} unless 'var' eq $first;
+			my $left_re = join '|', keys %left;
+			if ($spec =~ s/(.*?)(?=(?:$left_re|\z))//) {
+				$tokens{$first} = $1;
+			}
+		} else {
+			last;
+		}
+	}
+
+	if (!(exists $tokens{name} && exists $tokens{type})) {
+		$self->__log(__x("error: invalid option specification '{spec}'",
+		                 spec => $_[1]));
+		return $self;
+	}
+
+	my $name = delete $tokens{name};
+	$self->{__engine_options}->{$name} = \%tokens;
+
+	return $self;
+}
+
 sub __fatal {
 	my ($self, $msg) = @_;
 
@@ -356,6 +388,8 @@ sub __startEngine {
 				                 name => $args));
 				$self->{__analyzer} = $args;
 			}
+		} elsif ('option' eq $directive) {
+			$self->__parseEngineOption($args) or return;
 		}
 	}
 	alarm 0;
@@ -389,7 +423,6 @@ sub __escapeCommand {
 
 	return join ' ', @escaped;
 }
-
 
 sub __log {
 	my ($self, $msg) = @_;
@@ -511,7 +544,7 @@ sub __displayVersion {
 
 	$package =~ s/::/-/g;
 
-	print __x('{program} (Parse-Kayak) {version}
+	print __x('{program} (Chess-Analyze) {version}
 Copyright (C) 2019, Guido Flohr <guido.flohr@cantanea.com>,
 all rights reserved.
 This program is free software. It comes without any warranty, to
