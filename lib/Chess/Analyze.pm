@@ -298,16 +298,11 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
-	$move_info = $self->__makeMove($copy, $info{bestmove})
-		or $self->__fatal(__x("cannot apply best move '{move}': {error}",
-		                      move => $info{bestmove}, error => $@));
-
 	use Data::Dumper;
 	warn Dumper \%info;
 
 	my @pv = $self->__convertPV($copy, $info{pv});
 	@pv = $self->__numberMoves($pos, $info{best_move}, @pv);
-warn "converted: ", Dumper \@pv;
 	$info{pv} = \@pv;
 
 	push @{$self->{__analysis}}, \%info;
@@ -357,8 +352,8 @@ sub __convertPV {
 	$pos = dclone $pos;
 	my @pv = split /[ \t]/, $pv;
 	foreach my $move (@pv) {
-		my %move_info = $self->__makeMove($pos, $move) or last;
-		$move = $move_info{san};
+		my $move_info = $self->__makeMove($pos, $move) or last;
+		$move = $move_info->{san};
 	}
 
 	return @pv;
