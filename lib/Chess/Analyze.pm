@@ -27,8 +27,7 @@ use Symbol qw(gensym);
 use POSIX qw(:sys_wait_h);
 use Config;
 use Scalar::Util 1.10 qw(looks_like_number);
-# FIXME! Which version of 
-use Storable qw(dclone);
+use Storable 3.06 qw(dclone);
 
 sub new {
 	my ($class, $options, @input_files) = @_;
@@ -208,7 +207,7 @@ sub analyzeGame {
 	$comments->{$last_move} = $result_comment if defined $result_comment;
 
 	my $pos = Chess::Rep->new;
-
+	$self->{__analysis} = [];
 	foreach my $move (@$moves) {
 		$self->analyzeMove($pos, $move) or return;
 	}
@@ -294,41 +293,59 @@ sub analyzeMove {
 
 	my $copy = dclone $pos;
 
-	$pos->go_move($move)
-		or $self->__fatal(__x("cannot apply move '{move}'",
-			                  move => $move));
-	my %move_info = $copy->go_move($info{bestmove})
-		or $self->__fatal(__x("cannot apply best move '{move}'",
-		                      move => $info{bestmove}));
+	my $move_info = $self->__makeMove($pos, $move)
+		or $self->__fatal(__x("cannot apply move '{move}': {error}",
+		                      move => $move, error => $@));
+	$info{move} = $move_info->{san};
 
-	if ($copy->get_fen ne $pos->get_fen) {
-		# Not the best move.
-		my @pv = $move_info{san}, $self->__convertPV($copy, $info{pv});
-		@pv = $self->__numberMoves($copy, @pv);
-		my $pv = join ' ', @pv;
-	}
+	$move_info = $self->__makeMove($copy, $info{bestmove})
+		or $self->__fatal(__x("cannot apply best move '{move}': {error}",
+		                      move => $info{bestmove}, error => $@));
+
+	use Data::Dumper;
+	warn Dumper \%info;
+
+	my @pv = $self->__convertPV($copy, $info{pv});
+	@pv = $self->__numberMoves($pos, $info{best_move}, @pv);
+warn "converted: ", Dumper \@pv;
+	$info{pv} = \@pv;
+
+	push @{$self->{__analysis}}, \%info;
 
 	return $self;
+}
+
+sub __makeMove {
+	my ($self, $pos, $move) = @_;
+
+	my $move_info;
+	eval { $move_info = $pos->go_move($move) };
+	if ($@) {
+		$@ =~ s{ at (.*) line [1-9][0-9]*\.$}{};
+		return;
+	}
+
+	return $move_info;
 }
 
 sub __numberMoves {
 	my ($self, $pos, @pv) = @_;
 
 	return '' if !@pv;
-	$pos = dclone $pos;
-	my $prefix = $pos->{fullmove} . '. ';
+	my $fullmove;
+	my $i;
 	if ($pos->to_move != 0) {
-		$prefix .= '... ';
+		$fullmove = $pos->{fullmove} - 1;
+		$pv[0] = "$fullmove. ... $pv[0]";
+		$i = 1;
+	} else {
+		$fullmove = $pos->{fullmove};
+		$pv[0] = "$fullmove. $pv[0]";
+		$i = 2;
 	}
-	$pv[0] = $prefix . $pv[0];
-	for (my $i = 1; $i < @pv; ++$i) {
-		my %move_info = $pos->go_move($pv[$i]);
-		if (%move_info) {
-			$pv[$i] = $move_info{san};
-		}
-		if ($pos->to_move == 0) {
-			$pv[$i] = "$pos->{fullmove}. $pv[$i]";
-		}
+	for (; $i < @pv; $i += 2) {
+		++$fullmove;
+		$pv[$i] = "$fullmove. $pv[$i]";
 	}
 
 	return @pv;
@@ -340,7 +357,7 @@ sub __convertPV {
 	$pos = dclone $pos;
 	my @pv = split /[ \t]/, $pv;
 	foreach my $move (@pv) {
-		my %move_info = $pos->go_move($move) or last;
+		my %move_info = $self->__makeMove($pos, $move) or last;
 		$move = $move_info{san};
 	}
 
