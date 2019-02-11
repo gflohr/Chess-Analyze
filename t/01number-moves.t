@@ -22,7 +22,6 @@ my $pos = Chess::Rep->new;
 
 my @pv;
 
-ok $pos->go_move('e2e4');
 @pv = Chess::Analyze->__numberMoves($pos, 'e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6');
 is_deeply \@pv, [
 	'1. e4',
@@ -33,7 +32,7 @@ is_deeply \@pv, [
 	'a6',
 ];
 
-ok $pos->go_move('e7e5');
+ok $pos->go_move('e2e4');
 @pv = Chess::Analyze->__numberMoves($pos, 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6');
 is_deeply \@pv, [
 	'1. ... e5',
@@ -43,7 +42,7 @@ is_deeply \@pv, [
 	'a6',
 ];
 
-ok $pos->go_move('Nf3');
+ok $pos->go_move('e7e5');
 @pv = Chess::Analyze->__numberMoves($pos, 'Nf3', 'Nc6', 'Bb5', 'a6');
 is_deeply \@pv, [
 	'2. Nf3',
@@ -52,7 +51,7 @@ is_deeply \@pv, [
 	'a6',
 ];
 
-ok $pos->go_move('Nc6');
+ok $pos->go_move('Nf3');
 @pv = Chess::Analyze->__numberMoves($pos, 'Nc6', 'Bb5', 'a6');
 is_deeply \@pv, [
 	'2. ... Nc6',
@@ -60,14 +59,14 @@ is_deeply \@pv, [
 	'a6',
 ];
 
-ok $pos->go_move('Bb5');
+ok $pos->go_move('Nc6');
 @pv = Chess::Analyze->__numberMoves($pos, 'Bb5', 'a6');
 is_deeply \@pv, [
 	'3. Bb5',
 	'a6',
 ];
 
-ok $pos->go_move('a6');
+ok $pos->go_move('Bb5');
 @pv = Chess::Analyze->__numberMoves($pos, 'a6');
 is_deeply \@pv, [
 	'3. ... a6',

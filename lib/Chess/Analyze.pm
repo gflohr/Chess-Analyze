@@ -298,12 +298,12 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
+$DB::single = 1;
+	my @pv = $self->__convertPV($copy, $info{pv});
+	@pv = $self->__numberMoves($copy, @pv);
+	$info{pv} = \@pv;
 	use Data::Dumper;
 	warn Dumper \%info;
-
-	my @pv = $self->__convertPV($copy, $info{pv});
-	@pv = $self->__numberMoves($pos, $info{best_move}, @pv);
-	$info{pv} = \@pv;
 
 	push @{$self->{__analysis}}, \%info;
 
@@ -327,14 +327,12 @@ sub __numberMoves {
 	my ($self, $pos, @pv) = @_;
 
 	return '' if !@pv;
-	my $fullmove;
+	my $fullmove = $pos->{fullmove};
 	my $i;
-	if ($pos->to_move != 0) {
-		$fullmove = $pos->{fullmove} - 1;
+	if ($pos->to_move == 0) {
 		$pv[0] = "$fullmove. ... $pv[0]";
 		$i = 1;
 	} else {
-		$fullmove = $pos->{fullmove};
 		$pv[0] = "$fullmove. $pv[0]";
 		$i = 2;
 	}
