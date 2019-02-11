@@ -47,7 +47,7 @@ sub new {
 		$options{$option} = $options->{$option};
 	}
 	if (!$options{depth} && !$options{seconds}) {
-		$options{seconds} = 3;
+		$options{seconds} = 1;
 	}
 
 	$options{engine} = ['stockfish'] if !defined $options{engine};
@@ -298,12 +298,11 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
-$DB::single = 1;
 	my @pv = $self->__convertPV($copy, $info{pv});
 	@pv = $self->__numberMoves($copy, @pv);
 	$info{pv} = \@pv;
-	use Data::Dumper;
-	warn Dumper \%info;
+
+
 
 	push @{$self->{__analysis}}, \%info;
 
@@ -382,6 +381,11 @@ sub __parseEnginePostOutput {
 		my ($first, $rest) = split /[ \t]+/, $line, 2;
 		if ("info" eq $first) {
 			my $info = $self->__parseInfo($rest);
+
+			# Discard incomplete results.
+			next if $info->{upperbound};
+			next if $info->{lowerbound};
+
 			if (exists $info->{mate}) {
 				delete $result{cp};
 				$result{mate} = $info->{mate};
@@ -395,7 +399,16 @@ sub __parseEnginePostOutput {
 				$result{pv} = $info->{pv};
 			}
 		} elsif ("bestmove" eq $first) {
-			($result{bestmove}) = split /[ \t]+/, $rest, 2;
+			my $bestmove = split /[ \t]+/, $rest, 2;
+
+			# We take the last full pv instead of the best move because
+			# we want an accurate result.
+			if ($result{pv}) {
+				my @pv = split /[ \t]+/, $result{pv}, 2;
+				$result{bestmove} = $pv[0];
+			} else {
+				$result{bestmove} = $bestmove;
+			}
 			last;
 		}
 	}
