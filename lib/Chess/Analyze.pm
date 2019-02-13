@@ -207,11 +207,47 @@ sub analyzeGame {
 	$comments->{$last_move} = $result_comment if defined $result_comment;
 
 	my $pos = Chess::Rep->new;
-	$self->{__analysis} = {
-		analysis => [],
+	my $analysis = $self->{__analysis} = {
+		infos => [],
 	};
+
 	foreach my $move (@$moves) {
 		$self->analyzeMove($pos, $move) or return;
+	}
+
+	for (my $i = 0; $i < @{$analysis->{infos}}; ++$i) {
+		my $key = 1 + ($i >> 1);
+		if ($i & 1) {
+			$key .= 'b';
+		} else {
+			$key .= 'w';
+		}
+
+		my $info = $analysis->{infos}->[$i];
+		my $best_info = $info->{best_info};
+
+		my $comment = '';
+		my $score;
+
+		if ($info->{mate}) {
+			$score = __x("mate in {num_moves}", num_moves => abs $info->{mate});
+		} else {
+			$score = sprintf '%g', $info->{cp} / 100;
+		}
+		$comment .= " { ($score";
+
+		if ($best_info) {
+			$comment .= '/';
+			if ($best_info->{mate}) {
+				$score = __x("mate in {num_moves}", num_moves => abs $info->{mate});
+			} else {
+				$score = sprintf '%g', $best_info->{cp} / 100;
+			}
+		}
+
+		$comment .= ") }";
+
+		$comments->{$key} = $comment;
 	}
 
 	my $output = '';
@@ -325,7 +361,7 @@ sub analyzeMove {
 		my $best_info = $self->__makeMove($copy, $bestmove);
 		$info{best_info} = $best_info;
 	}
-	push @{$self->{__analysis}->{analysis}}, \%info;
+	push @{$self->{__analysis}->{infos}}, \%info;
 
 	return $self;
 }
