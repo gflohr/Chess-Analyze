@@ -47,7 +47,7 @@ sub new {
 		$options{$option} = $options->{$option};
 	}
 	if (!$options{depth} && !$options{seconds}) {
-		$options{seconds} = 1;
+		$options{seconds} = 0.1;
 	}
 
 	$options{engine} = ['stockfish'] if !defined $options{engine};
@@ -302,8 +302,13 @@ sub analyzeMove {
 	@pv = $self->__numberMoves($copy, @pv);
 	$info{pv} = \@pv;
 
-
-
+	$move_info = $self->__makeMove($copy, $info{bestmove});
+	my $bestmove = $move_info->{san};
+	if ($bestmove ne $info{move}) {
+		# That wasn't the best move as considered by the engine.
+		my $best_info = $self->__makeMove($copy, $bestmove);
+		$info{best_info} = $best_info;
+	}
 	push @{$self->{__analysis}}, \%info;
 
 	return $self;
@@ -781,25 +786,24 @@ sub __logOutput {
 sub __breakLines {
 	my ($self, $moves) = @_;
 
-	my @moves = split //, $moves;
+	my @chars = split //, $moves;
 	my $last_space = 0;
 	my $column = 0;
-	my $length = @moves;
+	my $length = @chars;
 
 	for (my $i = 0; $i < $length; ++$i) {
-		if ($column >= 80) {
-			$moves[$last_space] = "\n";
+		if ($column >= 80 && $last_space) {
+			$chars[$last_space] = "\n";
 			$column = $i - $last_space;
 		} else {
-			if (' ' eq $moves[$i] && '.' ne $moves[$i - 1]
-			    && $moves[$i - 2] ge '0' && $moves[$i - 2] le '9') {
+			if (' ' eq $chars[$i] && '.' ne $chars[$i - 1]) {
 				$last_space = $i;
 			}
 			++$column;
 		}
 	}
 
-	return join '', @moves;
+	return join '', @chars;
 }
 
 sub __printTag {
