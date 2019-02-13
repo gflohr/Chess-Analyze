@@ -207,7 +207,9 @@ sub analyzeGame {
 	$comments->{$last_move} = $result_comment if defined $result_comment;
 
 	my $pos = Chess::Rep->new;
-	$self->{__analysis} = [];
+	$self->{__analysis} = {
+		analysis => [],
+	};
 	foreach my $move (@$moves) {
 		$self->analyzeMove($pos, $move) or return;
 	}
@@ -226,6 +228,8 @@ sub analyzeGame {
 	$output .= $self->__printTag(White => $tags->{White});
 	$tags->{Black} = '?' if !defined $tags->{Black};
 	$output .= $self->__printTag(Black => $tags->{Black});
+	$tags->{Result} = '*' if !defined $tags->{Result};
+	$output .= $self->__printTag(Result => $tags->{Result});
 
 	my %seen = (
 		Event => 1,
@@ -237,6 +241,8 @@ sub analyzeGame {
 		Result => 1,
 		Game => 1,
 		Analyzer => 1,
+		'White-Forced-Moves' => 1,
+		'Black-Forced-Moves' => 1,
 	);
 
 	foreach my $tag (sort keys %$tags) {
@@ -244,12 +250,14 @@ sub analyzeGame {
 		$output .= $self->__printTag($tag => $tags->{$tag});
 	}
 
-
 	if (defined $self->{__analyzer}) {
 		$output .= $self->__printTag(Analyzer => $self->{__analyzer});
 	}
-	$tags->{Result} = '*' if !defined $tags->{Result};
-	$output .= $self->__printTag(Result => $tags->{Result});
+	$output .= $self->__printTag('White-Forced-Moves',
+	                             0 + $self->{__analysis}->{white_forced_moves});
+	$output .= $self->__printTag('Black-Forced-Moves',
+	                             0 + $self->{__analysis}->{black_forced_moves});
+
 	$output .= "\n";
 
 	my $move_str = '';
@@ -285,6 +293,14 @@ sub analyzeGame {
 sub analyzeMove {
 	my ($self, $pos, $move) = @_;
 
+	my $moves = $pos->status->{moves};
+	if (@$moves == 1) {
+		if ($pos->to_move == 0) {
+			++$self->{__analysis}->{black_forced_moves};
+		} else {
+			++$self->{__analysis}->{white_forced_moves};
+		}
+	}
 	my $fen = $pos->get_fen;
 	$self->__sendCommand("position fen $fen") or return;
 
@@ -309,7 +325,7 @@ sub analyzeMove {
 		my $best_info = $self->__makeMove($copy, $bestmove);
 		$info{best_info} = $best_info;
 	}
-	push @{$self->{__analysis}}, \%info;
+	push @{$self->{__analysis}->{analysis}}, \%info;
 
 	return $self;
 }
