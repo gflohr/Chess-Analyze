@@ -71,4 +71,28 @@ $fen = "k7/8/8/7B/8/8/8/7K w - - 10 20";
 $pos = Chess::Rep->new($fen);
 ok(Chess::Analyze->__insufficientMaterial($pos));
 
+# King vs. king and bishop.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   |   | b | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: -3.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/7b/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
+
 done_testing;
