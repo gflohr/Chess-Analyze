@@ -367,6 +367,14 @@ sub analyzeMove {
 	return $self;
 }
 
+sub __significantFEN {
+	my ($self, $fen) = @_;
+
+	$fen =~ s/ [0-9]+ [0-9]+$//;
+
+	return $fen;
+}
+
 sub __makeMove {
 	my ($self, $pos, $move) = @_;
 
