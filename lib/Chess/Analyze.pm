@@ -209,6 +209,7 @@ sub analyzeGame {
 	my $pos = Chess::Rep->new;
 	my $analysis = $self->{__analysis} = {
 		infos => [],
+		fen => { $pos->get_fen => 1 }
 	};
 
 	foreach my $move (@$moves) {
@@ -224,26 +225,17 @@ sub analyzeGame {
 		}
 
 		my $info = $analysis->{infos}->[$i];
-		my $best_info = $info->{best_info};
 
 		my $comment = '';
 		my $score;
 
+		# FIXME! This is the score for the best move!
 		if ($info->{mate}) {
 			$score = __x("mate in {num_moves}", num_moves => abs $info->{mate});
 		} else {
 			$score = sprintf '%g', $info->{cp} / 100;
 		}
 		$comment .= " { ($score";
-
-		if ($best_info) {
-			$comment .= '/';
-			if ($best_info->{mate}) {
-				$score = __x("mate in {num_moves}", num_moves => abs $info->{mate});
-			} else {
-				$score = sprintf '%g', $best_info->{cp} / 100;
-			}
-		}
 
 		$comment .= ") }";
 
@@ -337,10 +329,13 @@ sub analyzeMove {
 			++$self->{__analysis}->{white_forced_moves};
 		}
 	}
+
+	my $analysis = $self->{__analysis};
+
 	my $fen = $pos->get_fen;
 	$self->__sendCommand("position fen $fen") or return;
 
-	my %info = $self->__parseEnginePostOutput($pos, $fen, $move)
+	my %info = $self->__parseEnginePostOutput($pos, $fen)
 		or return;
 
 	my $copy = dclone $pos;
@@ -350,18 +345,24 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
-	my @pv = $self->__convertPV($copy, $info{pv});
-	@pv = $self->__numberMoves($copy, @pv);
-	$info{pv} = \@pv;
+	my $new_fen = $pos->get_fen;
+	if ($analysis->{fen}->{$new_fen}++ >= 3) {
+		$info{draw} = 1;
+	} elsif ($pos->status->{halfmove} >= 100) {
+		$info{draw} = 1;
+	} else {
+		my @pv = $self->__convertPV($copy, $info{pv});
+		@pv = $self->__numberMoves($copy, @pv);
+		$info{pv} = \@pv;
 
-	$move_info = $self->__makeMove($copy, $info{bestmove});
-	my $bestmove = $move_info->{san};
-	if ($bestmove ne $info{move}) {
-		# That wasn't the best move as considered by the engine.
-		my $best_info = $self->__makeMove($copy, $bestmove);
-		$info{best_info} = $best_info;
+		$move_info = $self->__makeMove($copy, $info{bestmove});
+		my $best_move = $move_info->{san};
+		if ($best_move ne $info{move}) {
+			$info{best_move} = $best_move;
+		}
 	}
-	push @{$self->{__analysis}->{infos}}, \%info;
+
+	push @{$analysis->{infos}}, \%info;
 
 	return $self;
 }
@@ -414,7 +415,7 @@ sub __convertPV {
 }
 
 sub __parseEnginePostOutput {
-	my ($self, $pos, $fen, $move) = @_;
+	my ($self, $pos, $fen) = @_;
 
 	my @command = ('go');
 	if ($self->{__options}->{depth}) {
