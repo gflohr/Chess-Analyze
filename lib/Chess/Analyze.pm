@@ -209,7 +209,7 @@ sub analyzeGame {
 	my $pos = Chess::Rep->new;
 	my $analysis = $self->{__analysis} = {
 		infos => [],
-		fen => { $pos->get_fen => 1 }
+		fen => { $self->__significantFEN($pos->get_fen) => 1 }
 	};
 
 	foreach my $move (@$moves) {
@@ -345,7 +345,7 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
-	my $new_fen = $pos->get_fen;
+	my $new_fen = $self->__significantFEN($pos->get_fen);
 	if ($analysis->{fen}->{$new_fen}++ >= 3) {
 		$info{draw} = 1;
 	} elsif ($pos->status->{halfmove} >= 100) {
