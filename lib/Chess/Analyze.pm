@@ -29,6 +29,17 @@ use Config;
 use Scalar::Util 1.10 qw(looks_like_number);
 use Storable 3.06 qw(dclone);
 
+use constant WHITE_FIELDS => [
+	1, 0, 1, 0, 1, 0, 1, 0,
+	0, 1, 0, 1, 0, 1, 0, 1,
+	1, 0, 1, 0, 1, 0, 1, 0,
+	0, 1, 0, 1, 0, 1, 0, 1,
+	1, 0, 1, 0, 1, 0, 1, 0,
+	0, 1, 0, 1, 0, 1, 0, 1,
+	1, 0, 1, 0, 1, 0, 1, 0,
+	0, 1, 0, 1, 0, 1, 0, 1,
+];
+
 sub new {
 	my ($class, $options, @input_files) = @_;
 
@@ -365,6 +376,55 @@ sub analyzeMove {
 	push @{$analysis->{infos}}, \%info;
 
 	return $self;
+}
+
+sub __insufficientMaterial
+{
+	my ($self, $pos) = @_;
+
+	my $status = $pos->status;
+
+	my %pieces;
+	my %bishops;
+	my $field_count = 0;
+	foreach my $index (0x00 ..  0x07, 0x10 .. 0x17, 0x60 .. 0x67, 0x70 .. 0x77) {
+		my $piece = $pos->get_piece_at_index($index);
+		my $color = $piece & 0x80 ? 'black' : 'white';
+		if ($piece & 0x1) {
+			++$pieces{$color}->{pawn};
+		} elsif ($piece & 0x2) {
+			++$pieces{$color}->{knight};
+		} elsif ($piece & 0x4) {
+			++$pieces{$color}->{king};
+		} elsif ($piece & 0x8) {
+			$bishops{$color} = WHITE_FIELDS->[$field_count];
+			++$pieces{$color}->{bishop};
+		} elsif ($piece & 0x10) {
+			++$pieces{$color}->{rook};
+		} elsif ($piece & 0x20) {
+			++$pieces{$color}->{queen};
+		}
+		++$field_count;
+	}
+
+	return if $pieces{white}->{pawn} || $pieces{black}->{pawn};
+	return if $pieces{white}->{queen} || $pieces{black}->{queen};
+	return if $pieces{white}->{rook} || $pieces{black}->{rook};
+
+	# Two pieces.
+	return if $pieces{white}->{knight} && $pieces{white}->{bishop};
+	return if $pieces{black}->{knight} && $pieces{black}->{bishop};
+	return if $pieces{white}->{knight} > 1;
+	return if $pieces{black}->{knight} > 1;
+	return if $pieces{white}->{bishop} > 1;
+	return if $pieces{black}->{bishop} > 1;
+
+	# Neither side has queens, rooks, or pawns. And neither side has more
+	# than one bishop or knight.
+	return 1 if !($pieces{white}->{bishop} && $pieces{black}->{bishops});
+
+	# Exactly one bishop on each side.
+	return $bishops{white} == $bishops{black};
 }
 
 sub __significantFEN {

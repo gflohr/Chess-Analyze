@@ -18,8 +18,57 @@ use Test::More;
 use Chess::Analyze;
 use Chess::Rep;
 
-my $fen = Chess::Rep->new->get_fen;
-my $significant = Chess::Analyze->__significantFEN($fen);
-is $significant, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+my ($fen, $pos);
+
+$pos = Chess::Rep->new;
+ok(!Chess::Analyze->__insufficientMaterial($pos));
+
+# King vs. king.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   |   |   | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: +0.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/8/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
+
+# King and bishop vs. king.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   |   | B | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: +3.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/7B/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
 
 done_testing;
