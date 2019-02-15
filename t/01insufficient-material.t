@@ -95,4 +95,101 @@ $fen = "k7/8/8/7b/8/8/8/7K w - - 10 20";
 $pos = Chess::Rep->new($fen);
 ok(Chess::Analyze->__insufficientMaterial($pos));
 
+# King and knight vs. king.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   |   | N | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: +3.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/7N/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
+
+# King vs. king and knight.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   |   | n | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: -3.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/7n/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
+
+# One bishop each, same color.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   | B |   | b | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: +0.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/5B1b/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+ok(Chess::Analyze->__insufficientMaterial($pos));
+
+# One bishop each, different colors.
+#      a   b   c   d   e   f   g   h
+#    +---+---+---+---+---+---+---+---+
+#  8 | k |   |   |   |   |   |   |   | En passant not possible.
+#    +---+---+---+---+---+---+---+---+ White king castle: no.
+#  7 |   |   |   |   |   |   |   |   | White queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Black king castle: no.
+#  6 |   |   |   |   |   |   |   |   | Black queen castle: no.
+#    +---+---+---+---+---+---+---+---+ Half move clock (50 moves): 10.
+#  5 |   |   |   |   |   |   | B | b | Half moves: 38.
+#    +---+---+---+---+---+---+---+---+ Next move: white.
+#  4 |   |   |   |   |   |   |   |   | Material: +0.
+#    +---+---+---+---+---+---+---+---+ Black has castled: no.
+#  3 |   |   |   |   |   |   |   |   | White has castled: no.
+#    +---+---+---+---+---+---+---+---+
+#  2 |   |   |   |   |   |   |   |   |
+#    +---+---+---+---+---+---+---+---+
+#  1 |   |   |   |   |   |   |   | K |
+#    +---+---+---+---+---+---+---+---+
+#      a   b   c   d   e   f   g   h
+$fen = "k7/8/8/6Bb/8/8/8/7K w - - 10 20";
+$pos = Chess::Rep->new($fen);
+$DB::single = 1;
+ok(!Chess::Analyze->__insufficientMaterial($pos));
+
 done_testing;

@@ -387,24 +387,26 @@ sub __insufficientMaterial
 	my %pieces;
 	my %bishops;
 	my $field_count = 0;
-	foreach my $index (0x00 ..  0x07, 0x10 .. 0x17, 0x60 .. 0x67, 0x70 .. 0x77) {
-		my $piece = $pos->get_piece_at_index($index);
-		my $color = $piece & 0x80 ? 'black' : 'white';
-		if ($piece & 0x1) {
-			++$pieces{$color}->{pawn};
-		} elsif ($piece & 0x2) {
-			++$pieces{$color}->{knight};
-		} elsif ($piece & 0x4) {
-			++$pieces{$color}->{king};
-		} elsif ($piece & 0x8) {
-			$bishops{$color} = WHITE_FIELDS->[$field_count];
-			++$pieces{$color}->{bishop};
-		} elsif ($piece & 0x10) {
-			++$pieces{$color}->{rook};
-		} elsif ($piece & 0x20) {
-			++$pieces{$color}->{queen};
+	foreach my $rank (0 .. 7) {
+		foreach my $file (0 .. 7) {
+			my $piece = $pos->get_piece_at($rank, $file);
+			my $color = $piece & 0x80 ? 'black' : 'white';
+			if ($piece & 0x1) {
+				++$pieces{$color}->{pawn};
+			} elsif ($piece & 0x2) {
+				++$pieces{$color}->{knight};
+			} elsif ($piece & 0x4) {
+				++$pieces{$color}->{king};
+			} elsif ($piece & 0x8) {
+				$bishops{$color} = WHITE_FIELDS->[$field_count];
+				++$pieces{$color}->{bishop};
+			} elsif ($piece & 0x10) {
+				++$pieces{$color}->{rook};
+			} elsif ($piece & 0x20) {
+				++$pieces{$color}->{queen};
+			}
+			++$field_count;
 		}
-		++$field_count;
 	}
 
 	return if $pieces{white}->{pawn} || $pieces{black}->{pawn};
@@ -421,9 +423,10 @@ sub __insufficientMaterial
 
 	# Neither side has queens, rooks, or pawns. And neither side has more
 	# than one bishop or knight.
-	return 1 if !($pieces{white}->{bishop} && $pieces{black}->{bishops});
+	return 1 if !($pieces{white}->{bishop} && $pieces{black}->{bishop});
 
-	# Exactly one bishop on each side.
+	# Exactly one bishop on each side.  It's a draw, when they are of the
+	# same color.
 	return $bishops{white} == $bishops{black};
 }
 
