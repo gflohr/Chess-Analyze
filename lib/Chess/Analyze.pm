@@ -253,6 +253,11 @@ sub analyzeGame {
 		$comments->{$key} = $comment;
 	}
 
+	if ($analysis->{result}) {
+		$tags->{Result} = $analysis->{result}->{score};
+		$comments->{$last_move} = qq( { $analysis->{result}->{description} });
+	}
+
 	my $output = '';
 
 	$tags->{Event} = '?' if !defined $tags->{Event};
@@ -356,11 +361,9 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 	$info{move} = $move_info->{san};
 
-	my $new_fen = $self->__significantFEN($pos->get_fen);
-	if ($analysis->{fen}->{$new_fen}++ >= 3) {
-		$info{draw} = 1;
-	} elsif ($pos->status->{halfmove} >= 100) {
-		$info{draw} = 1;
+	my $result = $self->__gameOver($pos);
+	if ($result) {
+		$analysis->{result} = $result;
 	} else {
 		my @pv = $self->__convertPV($copy, $info{pv});
 		@pv = $self->__numberMoves($copy, @pv);
@@ -376,6 +379,56 @@ sub analyzeMove {
 	push @{$analysis->{infos}}, \%info;
 
 	return $self;
+}
+
+sub __gameOver {
+	my ($self, $pos) = @_;
+
+	my $status = $pos->status;
+	if ($status->{stalemate}) {
+		return {
+			score => '1/2-1/2',
+			description => __"Stalemate",
+		}
+	}
+	
+	if ($status->{mate}) {
+		if ($pos->to_move) {
+			return {
+				score => '0-1',
+				description => __"Black mates",
+			};
+		} else {
+			return {
+				score => '1-0',
+				description => __"White mates",
+			};
+		}
+	}
+
+	my $analysis = $self->{__analysis};
+	my $new_fen = $self->__significantFEN($pos->get_fen);
+
+	if ($analysis->{fen}->{$new_fen}++ >= 3) {
+		return {
+			score => '1/2-1/2',
+			description => __"Draw by 3-fold repetition",
+		}
+	}
+	if ($pos->status->{halfmove} >= 100) {
+		return {
+			score => '1/2-1/2',
+			description => __"Draw by 50-moves rule",
+		}
+	}
+	if ($self->__insufficientMaterial($pos)) {
+		return {
+			score => '1/2-1/2',
+			description => __"Draw by insufficient material",
+		}
+	}
+
+	return;
 }
 
 sub __insufficientMaterial
