@@ -64,6 +64,7 @@ sub new {
 	$options{engine} = ['stockfish'] if !defined $options{engine};
 
 	my $self = {
+		__mate_in_one => 2000,
 		__options => \%options,
 		__input_files => \@input_files,
 		__analyzer => $options{engine}->[0],
@@ -238,17 +239,21 @@ sub analyzeGame {
 		my $info = $analysis->{infos}->[$i];
 
 		my $comment = '';
-		my $score;
+		my ($score, $best_score);
 
-		# FIXME! This is the score for the best move!
-		if ($info->{mate}) {
-			$score = __x("mate in {num_moves}", num_moves => abs $info->{mate});
-		} else {
-			$score = sprintf '%g', $info->{cp} / 100;
+		$best_score = $self->__fullScore($info);
+
+		if ($info->{best_move}) {
+			if ($i + 1 < @{$analysis->{infos}}) {
+				$score = $self->__fullScore($analysis->{infos}->[$i + 1], +1);
+			}
 		}
-		$comment .= " { ($score";
 
-		$comment .= ") }";
+		if ($score) {
+			$comment .= " { ($score->{text}/$best_score->{text}) }"
+		} else {
+			$comment .= " { ($best_score->{text}) }";
+		}
 
 		$comments->{$key} = $comment;
 	}
@@ -379,6 +384,27 @@ sub analyzeMove {
 	push @{$analysis->{infos}}, \%info;
 
 	return $self;
+}
+
+sub __fullScore {
+	my ($self, $info, $future) = @_;
+
+	my $score;
+	my $sign = $future ? -1 : +1;
+	my $correction = $future ? 1 : 0;
+	if ($info->{mate}) {
+		$score->{cp} = int($self->{__mate_in_one} / $info->{mate} + 0.5);
+		my $description = __xn("mate in 1", "mate in {num_moves}",
+			                  abs $info->{mate} + $correction,
+			                  num_moves => abs $info->{mate});
+		$score->{text} = sprintf '%+g [%s]', $sign * $score->{cp} / 100,
+			                      $description;
+	} else {
+		$score->{cp} = $info->{cp};
+		$score->{text} = sprintf '%+g', $sign * $info->{cp} / 100;
+	}
+
+	return $score;
 }
 
 sub __gameOver {
