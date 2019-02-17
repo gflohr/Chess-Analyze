@@ -58,7 +58,7 @@ sub new {
 		$options{$option} = $options->{$option};
 	}
 	if (!$options{depth} && !$options{seconds}) {
-		$options{seconds} = 0.1;
+		$options{seconds} = 30;
 	}
 
 	$options{engine} = ['stockfish'] if !defined $options{engine};
@@ -397,11 +397,11 @@ sub __fullScore {
 		my $description = __xn("mate in 1", "mate in {num_moves}",
 			                  abs $info->{mate} + $correction,
 			                  num_moves => abs $info->{mate});
-		$score->{text} = sprintf '%+g [%s]', $sign * $score->{cp} / 100,
+		$score->{text} = sprintf '%+.2f [%s]', $sign * $score->{cp} / 100,
 			                      $description;
 	} else {
 		$score->{cp} = $info->{cp};
-		$score->{text} = sprintf '%+g', $sign * $info->{cp} / 100;
+		$score->{text} = sprintf '%+.2f', $sign * $info->{cp} / 100;
 	}
 
 	return $score;
