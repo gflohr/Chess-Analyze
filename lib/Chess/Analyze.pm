@@ -251,7 +251,12 @@ sub analyzeGame {
 		}
 
 		if ($score) {
-			$comment .= " { ($score->{text}/$best_score->{text}) }"
+			$comment .= " { ($score->{text}/$best_score->{text}) }";
+			my $variation = join ' ', $info->{pv};
+			$comment .= ' ('
+			            . __x("better: {variation}",
+			                  variation => join ' ', @{$info->{pv}})
+			            . ')';
 		} else {
 			$comment .= " { ($best_score->{text}) }";
 		}
@@ -303,7 +308,6 @@ sub analyzeGame {
 		$output .= $self->__printTag($tag => $tags->{$tag});
 	}
 
-	$DB::single = 1;
 	if ($analysis->{eco}) {
 		$output .= $self->__printTag(ECO => $analysis->{eco});
 		$output .= $self->__printTag(Variation => $analysis->{variation});
