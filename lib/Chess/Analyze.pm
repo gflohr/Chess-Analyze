@@ -398,7 +398,7 @@ sub analyzeGame {
 			sprintf '%+f', $evaluation->{blunders} / $white_unforced_moves);
 		$output	.= $self->__printTag(
 			'White-Loss-Per-Move', 
-			sprintf '%+f', $evaluation->{loss} / 100 / $white_unforced_moves);
+			sprintf '%f', $evaluation->{loss} / 100 / $white_unforced_moves);
 	}
 
 	$output .= $self->__printTag('Black-Moves', $black_moves);
@@ -417,7 +417,7 @@ sub analyzeGame {
 			sprintf '%+f', $evaluation->{blunders} / $black_unforced_moves);
 		$output	.= $self->__printTag(
 			'Black-Loss-Per-Move', 
-			sprintf '%+f', $evaluation->{loss} / 100 / $black_unforced_moves);
+			sprintf '%f', $evaluation->{loss} / 100 / $black_unforced_moves);
 	}
 
 	$output .= "\n";
