@@ -25,11 +25,22 @@ my %WriteMakefileArgs = (
   "PREREQ_PM" => {
     "Carp" => 0,
     "Chess::PGN::Parse" => "0.20",
+    "Chess::Rep" => "0.8",
     "Getopt::Long" => "2.36",
+    "IPC::Open2" => 0,
     "Locale::Messages" => 0,
     "Locale::TextDomain" => 0,
+    "POSIX" => 0,
+    "Scalar::Util" => "1.10",
+    "Storable" => "3.06",
+    "Symbol" => 0,
+    "Time::HiRes" => 0,
     "common::sense" => 0,
+    "constant" => 0,
     "strict" => 0
+  },
+  "TEST_REQUIRES" => {
+    "Test::More" => 0
   },
   "VERSION" => "0.1",
   "test" => {
@@ -41,11 +52,20 @@ my %WriteMakefileArgs = (
 my %FallbackPrereqs = (
   "Carp" => 0,
   "Chess::PGN::Parse" => "0.20",
+  "Chess::Rep" => "0.8",
   "Getopt::Long" => "2.36",
+  "IPC::Open2" => 0,
   "Locale::Messages" => 0,
   "Locale::TextDomain" => 0,
   "Module::Build" => "0.28",
+  "POSIX" => 0,
+  "Scalar::Util" => "1.10",
+  "Storable" => "3.06",
+  "Symbol" => 0,
+  "Test::More" => 0,
+  "Time::HiRes" => 0,
   "common::sense" => 0,
+  "constant" => 0,
   "strict" => 0
 );
 
