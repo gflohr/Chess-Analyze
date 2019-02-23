@@ -229,8 +229,16 @@ sub analyzeGame {
 		$self->analyzeMove($pos, $move) or return;
 	}
 
-	$analysis->{evaluation}->{white} = {};
-	$analysis->{evaluation}->{black} = {};
+	$analysis->{evaluation}->{white} = {
+		errors => 0,
+		blunders => 0,
+		loss => 0,
+	};
+	$analysis->{evaluation}->{black} = {
+		errors => 0,
+		blunders => 0,
+		loss => 0,
+	};
 	
 	for (my $i = 0; $i < @{$analysis->{infos}}; ++$i) {
 		my $key = 1 + ($i >> 1);
@@ -255,8 +263,7 @@ sub analyzeGame {
 
 		my $loss;
 		if ($score) {
-			$loss = $info->{to_move}
-			    ? $best_score - $score : $score - $best_score;
+			$loss = $best_score->{cp} - $score->{cp};
 			undef $loss if $loss < 0;
 		}
 
@@ -266,21 +273,23 @@ sub analyzeGame {
 		
 		if ($loss) {
 			$evaluation->{loss} += $loss;
-			$comment .= " { ($score->{text}/$best_score->{text})";
+			$comment .= " { ($score->{text}/$best_score->{text}) ";
 			# FIXME! Make this configurable!
-			if ($loss >= 1.0) {
+			if ($loss >= 100) {
 				$comment .= __x("Blunder! Better: {move}",
 				                move => $info->{pv}->[0]);
 				++$evaluation->{blunders};
-			} elsif ($loss >= 0.5) {
+				$comment .= ' ';
+			} elsif ($loss >= 50) {
 				$comment .= __x("Error! Better: {move}",
 				                move => $info->{pv}->[0]);
 				++$evaluation->{errors};
+				$comment .= ' ';
 			}
-			$comment .= " }";
+			$comment .= "}";
 
-			if ($loss >= 0.5) {
-				my $variation = join ' ', $info->{pv};
+			if ($loss >= 50) {
+				my $variation = join ' ', @{$info->{pv}};
 				$comment .= " ($variation)";
 			}
 		} else {
@@ -327,6 +336,16 @@ sub analyzeGame {
 		'Black-Moves' => 1,
 		'White-Forced-Moves' => 1,
 		'Black-Forced-Moves' => 1,
+		'White-Errors' => 1,
+		'Black-Errors' => 1,
+		'White-Blunders' => 1,
+		'Black-Blunders' => 1,
+		'White-Errors-Per-Move' => 1,
+		'Black-Errors-Per-Move' => 1,
+		'White-Blunders-Per-Move' => 1,
+		'Black-Blunders-Per-Move' => 1,
+		'White-Loss-Per-Move' => 1,
+		'Black-Loss-Per-Move' => 1,
 		ECO => 1,
 		Variation => 1,
 		'Scid-ECO' => 1,
@@ -359,12 +378,47 @@ sub analyzeGame {
 	my $half_moves = @{$analysis->{infos}};
 	my $white_moves = (1 + $half_moves) >> 1;
 	my $black_moves = $half_moves >> 1;
+	my $white_forced_moves = $self->{__analysis}->{white_forced_moves};
+	my $black_forced_moves = $self->{__analysis}->{black_forced_moves};
+	my $white_unforced_moves = $white_moves - $white_forced_moves;
+	my $black_unforced_moves = $black_moves - $black_forced_moves;
 	$output .= $self->__printTag('White-Moves', $white_moves);
+	$output .= $self->__printTag('White-Forced-Moves', 0 + $white_forced_moves);
+	if ($white_unforced_moves) {
+		my $evaluation = $analysis->{evaluation}->{white};
+		$output	.= $self->__printTag(
+			'White-Errors', $evaluation->{errors});
+		$output	.= $self->__printTag(
+			'White-Errors-Per-Move', 
+			sprintf '%+f', $evaluation->{errors} / $white_unforced_moves);
+		$output	.= $self->__printTag(
+			'White-Blunders', $evaluation->{errors});
+		$output	.= $self->__printTag(
+			'White-Blunders-Per-Move', 
+			sprintf '%+f', $evaluation->{blunders} / $white_unforced_moves);
+		$output	.= $self->__printTag(
+			'White-Loss-Per-Move', 
+			sprintf '%+f', $evaluation->{loss} / 100 / $white_unforced_moves);
+	}
+
 	$output .= $self->__printTag('Black-Moves', $black_moves);
-	$output .= $self->__printTag('White-Forced-Moves',
-	                             0 + $self->{__analysis}->{white_forced_moves});
-	$output .= $self->__printTag('Black-Forced-Moves',
-	                             0 + $self->{__analysis}->{black_forced_moves});
+	$output .= $self->__printTag('Black-Forced-Moves', 0 + $black_forced_moves);
+	if ($black_unforced_moves) {
+		my $evaluation = $analysis->{evaluation}->{black};
+		$output	.= $self->__printTag(
+			'Black-Errors', $evaluation->{errors});
+		$output	.= $self->__printTag(
+			'Black-Errors-Per-Move', 
+			sprintf '%+f', $evaluation->{errors} / $black_unforced_moves);
+		$output	.= $self->__printTag(
+			'Black-Blunders', $evaluation->{errors});
+		$output	.= $self->__printTag(
+			'Black-Blunders-Per-Move', 
+			sprintf '%+f', $evaluation->{blunders} / $black_unforced_moves);
+		$output	.= $self->__printTag(
+			'Black-Loss-Per-Move', 
+			sprintf '%+f', $evaluation->{loss} / 100 / $black_unforced_moves);
+	}
 
 	$output .= "\n";
 
@@ -467,7 +521,7 @@ sub __fullScore {
 		$score->{text} = sprintf '%+.2f [%s]', $sign * $score->{cp} / 100,
 			                      $description;
 	} else {
-		$score->{cp} = $info->{cp};
+		$score->{cp} = $sign * $info->{cp};
 		$score->{text} = sprintf '%+.2f', $sign * $info->{cp} / 100;
 	}
 
