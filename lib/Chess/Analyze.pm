@@ -19,6 +19,7 @@ use common::sense;
 use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
+use Chess::Opening::Book::ECO 0.5;
 use Chess::Rep 0.8;
 use Time::HiRes qw(gettimeofday);
 use POSIX qw(mktime);
@@ -57,6 +58,7 @@ sub new {
 	foreach my $option (keys %$options) {
 		$options{$option} = $options->{$option};
 	}
+
 	if (!$options{depth} && !$options{seconds}) {
 		$options{seconds} = 30;
 	}
@@ -69,6 +71,7 @@ sub new {
 		__input_files => \@input_files,
 		__analyzer => $options{engine}->[0],
 		__engine_options => {},
+		__eco => Chess::Opening::Book::ECO->new,
 	};
 
 	unshift @{$options{option}}, "Hash=$options{memory}";
@@ -92,7 +95,7 @@ sub newFromArgv {
 
 	my %options = eval { $self->__getOptions($argv) };
 	if ($@) {
-		$self->__usageError($@);
+		$self->__usageError;
 	}
 
 	$self->__displayUsage if $options{help};
@@ -103,13 +106,11 @@ sub newFromArgv {
 	}
 
 	$self->__usageError(__"no input files") if !@$argv;
-	$self->__usageError(__"option '--seconds' must be a positive integer")
-		if defined $options{seconds} && $options{seconds} <= 0;
 	$self->__usageError(__"option '--memory' must be a positive integer")
 		if defined $options{memory} && $options{memory} <= 0;
 	$self->__usageError(__"the options '--seconds' and '--depth' are mutually exclusive")
 		if defined $options{seconds} && defined $options{depth};
-	$self->__usageError(__"option '--seconds' must be a positive integer")
+	$self->__usageError(__"option '--seconds' must be a positive number")
 		if defined $options{seconds} && $options{seconds} <= 0;
 	$self->__usageError(__"option '--depth' must be a positive integer")
 		if defined $options{depth} && $options{depth} <= 0;
@@ -292,6 +293,9 @@ sub analyzeGame {
 		Analyzer => 1,
 		'White-Forced-Moves' => 1,
 		'Black-Forced-Moves' => 1,
+		ECO => 1,
+		Variation => 1,
+		'Scid-ECO' => 1,
 	);
 
 	foreach my $tag (sort keys %$tags) {
@@ -299,6 +303,14 @@ sub analyzeGame {
 		$output .= $self->__printTag($tag => $tags->{$tag});
 	}
 
+	$DB::single = 1;
+	if ($analysis->{eco}) {
+		$output .= $self->__printTag(ECO => $analysis->{eco});
+		$output .= $self->__printTag(Variation => $analysis->{variation});
+		$output .= $self->__printTag('Scid-ECO' => $analysis->{scid_eco});
+	}
+
+	# FIXME! Analyzer is the engine, the Annotator is Chess::Analyze.
 	if (defined $self->{__analyzer}) {
 		$output .= $self->__printTag(Analyzer => $self->{__analyzer});
 	}
@@ -382,6 +394,13 @@ sub analyzeMove {
 	}
 
 	push @{$analysis->{infos}}, \%info;
+
+	my $eco_entry = $self->{__eco}->lookupFEN($pos->get_fen);
+	if ($eco_entry) {
+		$analysis->{eco} = $eco_entry->eco;
+		$analysis->{scid_eco} = $eco_entry->xeco;
+		$analysis->{variation} = $eco_entry->variation;
+	}
 
 	return $self;
 }
@@ -1033,13 +1052,13 @@ sub __getOptions {
 		'e|engine=s@' => \$options{engine},
 		'm|memory=i' => \$options{memory},
 		'o|option=s@' => \$options{option},
-		's|seconds=i' => \$options{seconds},
+		's|seconds=s' => \$options{seconds},
 		'd|depth=i' => \$options{depth},
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
 		'v|verbose' => \$options{verbose},
-	);
+	) or die;
 
 	return %options;
 }
