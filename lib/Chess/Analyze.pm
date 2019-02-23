@@ -229,6 +229,9 @@ sub analyzeGame {
 		$self->analyzeMove($pos, $move) or return;
 	}
 
+	$analysis->{evaluation}->{white} = {};
+	$analysis->{evaluation}->{black} = {};
+	
 	for (my $i = 0; $i < @{$analysis->{infos}}; ++$i) {
 		my $key = 1 + ($i >> 1);
 		if ($i & 1) {
@@ -250,13 +253,36 @@ sub analyzeGame {
 			}
 		}
 
+		my $loss;
 		if ($score) {
-			$comment .= " { ($score->{text}/$best_score->{text}) }";
-			my $variation = join ' ', $info->{pv};
-			$comment .= ' ('
-			            . __x("better: {variation}",
-			                  variation => join ' ', @{$info->{pv}})
-			            . ')';
+			$loss = $info->{to_move}
+			    ? $best_score - $score : $score - $best_score;
+			undef $loss if $loss < 0;
+		}
+
+		my $evaluation = $info->{to_move}
+			? $analysis->{evaluation}->{white}
+			: $analysis->{evaluation}->{black};
+		
+		if ($loss) {
+			$evaluation->{loss} += $loss;
+			$comment .= " { ($score->{text}/$best_score->{text})";
+			# FIXME! Make this configurable!
+			if ($loss >= 1.0) {
+				$comment .= __x("Blunder! Better: {move}",
+				                move => $info->{pv}->[0]);
+				++$evaluation->{blunders};
+			} elsif ($loss >= 0.5) {
+				$comment .= __x("Error! Better: {move}",
+				                move => $info->{pv}->[0]);
+				++$evaluation->{errors};
+			}
+			$comment .= " }";
+
+			if ($loss >= 0.5) {
+				my $variation = join ' ', $info->{pv};
+				$comment .= " ($variation)";
+			}
 		} else {
 			$comment .= " { ($best_score->{text}) }";
 		}
@@ -295,7 +321,10 @@ sub analyzeGame {
 		Black => 1,
 		Result => 1,
 		Game => 1,
+		Annotator => 1,
 		Analyzer => 1,
+		'White-Moves' => 1,
+		'Black-Moves' => 1,
 		'White-Forced-Moves' => 1,
 		'Black-Forced-Moves' => 1,
 		ECO => 1,
@@ -314,10 +343,24 @@ sub analyzeGame {
 		$output .= $self->__printTag('Scid-ECO' => $analysis->{scid_eco});
 	}
 
-	# FIXME! Analyzer is the engine, the Annotator is Chess::Analyze.
+	if (defined $Chess::Analyze::VERSION) {
+		$output .= $self->__printTag(Annotator => join ' ',
+		                             'Chess::Analyze',
+		                             $Chess::Analyze::VERSION
+		                             );
+	} else {
+		$output .= $self->__printTag(Annotator => 'Chess::Analyze');
+	}
+
 	if (defined $self->{__analyzer}) {
 		$output .= $self->__printTag(Analyzer => $self->{__analyzer});
 	}
+
+	my $half_moves = @{$analysis->{infos}};
+	my $white_moves = (1 + $half_moves) >> 1;
+	my $black_moves = $half_moves >> 1;
+	$output .= $self->__printTag('White-Moves', $white_moves);
+	$output .= $self->__printTag('Black-Moves', $black_moves);
 	$output .= $self->__printTag('White-Forced-Moves',
 	                             0 + $self->{__analysis}->{white_forced_moves});
 	$output .= $self->__printTag('Black-Forced-Moves',
@@ -374,6 +417,7 @@ sub analyzeMove {
 
 	my %info = $self->__parseEnginePostOutput($pos, $fen)
 		or return;
+	$info{to_move} = $pos->to_move;
 
 	my $copy = dclone $pos;
 
