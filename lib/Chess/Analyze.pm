@@ -20,6 +20,7 @@ use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
 use Chess::Opening::Book::ECO 0.6;
+use Chess::Opening::Book::Polyglot 0.6;
 use Chess::Rep 0.8;
 use Time::HiRes qw(gettimeofday);
 use POSIX qw(mktime);
@@ -75,6 +76,9 @@ sub new {
 	};
 
 	unshift @{$options{option}}, "Hash=$options{memory}";
+
+	$self->{__book} = Chess::Opening::Book::Polyglot->new($options{book})
+		if defined $options{book} && length $options{book};
 
 	bless $self, $class;
 
@@ -222,7 +226,8 @@ sub analyzeGame {
 	my $pos = Chess::Rep->new;
 	my $analysis = $self->{__analysis} = {
 		infos => [],
-		fen => { $self->__significantFEN($pos->get_fen) => 1 }
+		fen => { $self->__significantFEN($pos->get_fen) => 1 },
+		book => $self->{__book},
 	};
 
 	foreach my $move (@$moves) {
@@ -1156,6 +1161,7 @@ sub __getOptions {
 		'o|option=s@' => \$options{option},
 		's|seconds=s' => \$options{seconds},
 		'd|depth=i' => \$options{depth},
+		'b|book=s' => \$options{book},
 		# Informative output.
 		'h|help' => \$options{help},
 		'V|version' => \$options{version},
@@ -1231,11 +1237,19 @@ EOF
 EOF
 
 	print __(<<EOF);
+  -d, --depth=DEPTH           think at most DEPTH plies
+EOF
+
+	print __(<<EOF);
   -m, --memory=MEGABYTES      allocate MEGABYTES memory for hashes etc.
 EOF
 
 	print __(<<EOF);
   -o, --option=NAME=VALUE     set engine option NAME to VALUE
+EOF
+
+	print __(<<EOF);
+  -b, --book=FILENAME         use polyglot opening book FILENAME
 EOF
 
 	print "\n";
