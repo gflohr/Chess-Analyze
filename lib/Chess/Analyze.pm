@@ -19,7 +19,7 @@ use common::sense;
 use Locale::TextDomain qw(com.cantanea.Chess-Analyze);
 use Getopt::Long 2.36 qw(GetOptionsFromArray);
 use Chess::PGN::Parse 0.20;
-use Chess::Opening::Book::ECO 0.5;
+use Chess::Opening::Book::ECO 0.6;
 use Chess::Rep 0.8;
 use Time::HiRes qw(gettimeofday);
 use POSIX qw(mktime);
