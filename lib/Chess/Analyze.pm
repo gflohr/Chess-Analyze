@@ -472,17 +472,18 @@ sub analyzeMove {
 	my $analysis = $self->{__analysis};
 
 	my $fen = $pos->get_fen;
-	$self->__sendCommand("position fen $fen") or return;
-
-	my %info = $self->__parseEnginePostOutput($pos, $fen)
-		or return;
-	$info{to_move} = $pos->to_move;
-
 	my $copy = dclone $pos;
-
 	my $move_info = $self->__makeMove($pos, $move)
 		or $self->__fatal(__x("cannot apply move '{move}': {error}",
 		                      move => $move, error => $@));
+
+	my %info;
+	$self->__sendCommand("position fen $fen") or return;
+
+	%info = $self->__parseEnginePostOutput($pos, $fen)
+		or return;
+	$info{to_move} = $pos->to_move;
+
 	$info{move} = $move_info->{san};
 
 	my $result = $self->__gameOver($pos);
