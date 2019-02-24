@@ -73,6 +73,7 @@ sub new {
 		__analyzer => $options{engine}->[0],
 		__engine_options => {},
 		__eco => Chess::Opening::Book::ECO->new,
+		__initial_score => 30,
 	};
 
 	unshift @{$options{option}}, "Hash=$options{memory}";
@@ -478,12 +479,38 @@ sub analyzeMove {
 		                      move => $move, error => $@));
 
 	my %info;
-	$self->__sendCommand("position fen $fen") or return;
+	while ($analysis->{book}) {
+			$self->__log(__"probing opening book");
+			my $entry = $analysis->{book}->lookupFEN($fen);
+			if (!$entry) { 
+					delete $analysis->{book};
+					last;
+			}
+			$self->__log(__"position found in book");
+			
+			my $cmove = $self->__coordinateNotation($move_info);
+			my $book_move = $entry->moves->{$cmove};
+			if ($book_move && $book_move->count) {
+					$info{cp} = $self->{__initial_score};
+					$info{book} = 1;
+					$info{bestmove} = $self->__coordinateNotation($move_info);
+					$self->__log(__x("move '{move}' found in book", move => $move));        
+			} else {
+					$self->__log(__x("move '{move}' not found in book",
+										move => $move));
+					delete $analysis->{book};
+			}
+			
+			last;
+	}
 
-	%info = $self->__parseEnginePostOutput($pos, $fen)
-		or return;
+	if (!%info) {
+		$self->__sendCommand("position fen $fen") or return;
+		%info = $self->__parseEnginePostOutput($pos, $fen)
+			or return;
+	}
+
 	$info{to_move} = $pos->to_move;
-
 	$info{move} = $move_info->{san};
 
 	my $result = $self->__gameOver($pos);
@@ -511,6 +538,15 @@ sub analyzeMove {
 	}
 
 	return $self;
+}
+
+sub __coordinateNotation {
+	my ($self, $move_info) = @_;
+
+	my $move = $move_info->{from} . $move_info->{to};
+	$move .= $move_info->{promote} if $move_info->{promote};
+
+	return $move;
 }
 
 sub __fullScore {
