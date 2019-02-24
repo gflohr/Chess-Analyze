@@ -256,53 +256,55 @@ sub analyzeGame {
 
 		my $info = $analysis->{infos}->[$i];
 
-		my $comment = '';
-		my ($score, $best_score);
+		if (!$info->{book}) {
+			my $comment = '';
+			my ($score, $best_score);
 
-		$best_score = $self->__fullScore($info);
+			$best_score = $self->__fullScore($info);
 
-		if ($info->{best_move}) {
-			if ($i + 1 < @{$analysis->{infos}}) {
-				$score = $self->__fullScore($analysis->{infos}->[$i + 1], +1);
+			if ($info->{best_move}) {
+				if ($i + 1 < @{$analysis->{infos}}) {
+					$score = $self->__fullScore($analysis->{infos}->[$i + 1], +1);
+				}
 			}
-		}
 
-		my $loss;
-		if ($score) {
-			$loss = $best_score->{cp} - $score->{cp};
-			undef $loss if $loss < 0;
-		}
-
-		my $evaluation = $info->{to_move}
-			? $analysis->{evaluation}->{white}
-			: $analysis->{evaluation}->{black};
-		
-		if ($loss) {
-			$evaluation->{loss} += $loss;
-			$comment .= " { ($score->{text}/$best_score->{text}) ";
-			# FIXME! Make this configurable!
-			if ($loss >= 100) {
-				$comment .= __x("Blunder! Better: {move}",
-				                move => $info->{pv}->[0]);
-				++$evaluation->{blunders};
-				$comment .= ' ';
-			} elsif ($loss >= 50) {
-				$comment .= __x("Error! Better: {move}",
-				                move => $info->{pv}->[0]);
-				++$evaluation->{errors};
-				$comment .= ' ';
+			my $loss;
+			if ($score) {
+				$loss = $best_score->{cp} - $score->{cp};
+				undef $loss if $loss < 0;
 			}
-			$comment .= "}";
 
-			if ($loss >= 50) {
-				my $variation = join ' ', @{$info->{pv}};
-				$comment .= " ($variation)";
+			my $evaluation = $info->{to_move}
+				? $analysis->{evaluation}->{white}
+				: $analysis->{evaluation}->{black};
+			
+			if ($loss) {
+				$evaluation->{loss} += $loss;
+				$comment .= " { ($score->{text}/$best_score->{text}) ";
+				# FIXME! Make this configurable!
+				if ($loss >= 100) {
+					$comment .= __x("Blunder! Better: {move}",
+									move => $info->{pv}->[0]);
+					++$evaluation->{blunders};
+					$comment .= ' ';
+				} elsif ($loss >= 50) {
+					$comment .= __x("Error! Better: {move}",
+									move => $info->{pv}->[0]);
+					++$evaluation->{errors};
+					$comment .= ' ';
+				}
+				$comment .= "}";
+
+				if ($loss >= 50) {
+					my $variation = join ' ', @{$info->{pv}};
+					$comment .= " ($variation)";
+				}
+			} else {
+				$comment .= " { ($best_score->{text}) }";
 			}
-		} else {
-			$comment .= " { ($best_score->{text}) }";
-		}
 
-		$comments->{$key} = $comment;
+			$comments->{$key} = $comment;
+		}
 	}
 
 	if ($analysis->{result}) {
