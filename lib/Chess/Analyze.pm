@@ -262,7 +262,7 @@ sub analyzeGame {
 
 			$best_score = $self->__fullScore($info);
 
-			if ($info->{best_move}) {
+			if ($info->{bestmove} ne $info->{move}) {
 				if ($i + 1 < @{$analysis->{infos}}) {
 					$score = $self->__fullScore($analysis->{infos}->[$i + 1], +1);
 				}
@@ -280,7 +280,7 @@ sub analyzeGame {
 			
 			if ($loss) {
 				$evaluation->{loss} += $loss;
-				$comment .= " { ($score->{text}/$best_score->{text}) ";
+				$comment .= " { ($best_score->{text} -> $score->{text}) ";
 				# FIXME! Make this configurable!
 				if ($loss >= 100) {
 					$comment .= __x("Blunder! Better: {move}",
@@ -288,7 +288,7 @@ sub analyzeGame {
 					++$evaluation->{blunders};
 					$comment .= ' ';
 				} elsif ($loss >= 50) {
-					$comment .= __x("Error! Better: {move}",
+					$comment .= __x("Mistake! Better: {move}",
 									move => $info->{pv}->[0]);
 					++$evaluation->{errors};
 					$comment .= ' ';
@@ -311,6 +311,9 @@ sub analyzeGame {
 		$tags->{Result} = $analysis->{result}->{score};
 		$comments->{$last_move} = qq( { $analysis->{result}->{description} });
 	}
+
+use Data::Dump;
+warn Data::Dump::dump($analysis);
 
 	my $output = '';
 
@@ -463,8 +466,10 @@ sub analyzeGame {
 sub analyzeMove {
 	my ($self, $pos, $move) = @_;
 
+	$self->__log(__x("analyzing {move}", move => $move));
 	my $moves = $pos->status->{moves};
 	if (@$moves == 1) {
+		# FIXME! Do not analyze forced moves.
 		if ($pos->to_move == 0) {
 			++$self->{__analysis}->{black_forced_moves};
 		} else {
@@ -493,7 +498,8 @@ sub analyzeMove {
 			my $cmove = $self->__coordinateNotation($move_info);
 			my $book_move = $entry->moves->{$cmove};
 			if ($book_move && $book_move->count) {
-					$info{cp} = $self->{__initial_score};
+					$info{cp} = $pos->to_move ? -$self->{__initial_score}
+						: $self->{__initial_score};
 					$info{book} = 1;
 					$info{bestmove} = $self->__coordinateNotation($move_info);
 					$self->__log(__x("move '{move}' found in book", move => $move));        
@@ -513,7 +519,7 @@ sub analyzeMove {
 	}
 
 	$info{to_move} = $pos->to_move;
-	$info{move} = $move_info->{san};
+	$info{move} = $self->__coordinateNotation($move_info);
 
 	my $result = $self->__gameOver($pos);
 	if ($result) {
@@ -522,12 +528,6 @@ sub analyzeMove {
 		my @pv = $self->__convertPV($copy, $info{pv});
 		@pv = $self->__numberMoves($copy, @pv);
 		$info{pv} = \@pv;
-
-		$move_info = $self->__makeMove($copy, $info{bestmove});
-		my $best_move = $move_info->{san};
-		if ($best_move ne $info{move}) {
-			$info{best_move} = $best_move;
-		}
 	}
 
 	push @{$analysis->{infos}}, \%info;

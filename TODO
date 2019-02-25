@@ -1,1 +1,7 @@
-- eval all go_move occurrences
+- Mate in ... not detected
+- do not display best move if the score doesn't change (for example two
+  different mates)
+- always display quicker mate
+- make thresholds configurable
+- make initial score configurable
+- show better pv for inexact score
