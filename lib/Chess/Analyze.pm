@@ -558,10 +558,18 @@ sub __fullScore {
 	my $sign = $future ? -1 : +1;
 	my $correction = $future ? 1 : 0;
 	if ($info->{mate}) {
-		$score->{cp} = $sign * int($self->{__mate_in_one} / $info->{mate} + 0.5);
+		my $mate;
+		if ($info->{mate} < 0) {
+			$sign = -$sign;
+			$mate = -$info->{mate};
+		} else {
+			$mate = $info->{mate};
+		}
+		$score->{cp} = $sign * int($self->{__mate_in_one} /
+		                           ($mate + $correction) + 0.5);
 		my $description = __xn("mate in 1", "mate in {num_moves}",
-			                  abs $info->{mate} + $correction,
-			                  num_moves => abs $info->{mate});
+			                   $mate + $correction,
+			                   num_moves => $mate);
 		$score->{text} = sprintf '%+.2f [%s]', $score->{cp} / 100,
 			                      $description;
 	} else {
