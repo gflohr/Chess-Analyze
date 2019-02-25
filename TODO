@@ -1,4 +1,3 @@
-- Mate in ... not detected
 - do not display best move if the score doesn't change (for example two
   different mates)
 - always display quicker mate

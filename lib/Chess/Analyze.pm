@@ -558,7 +558,7 @@ sub __fullScore {
 	my $sign = $future ? -1 : +1;
 	my $correction = $future ? 1 : 0;
 	if ($info->{mate}) {
-		$score->{cp} = int($sign * $self->{__mate_in_one} / $info->{mate} + 0.5);
+		$score->{cp} = $sign * int($self->{__mate_in_one} / $info->{mate} + 0.5);
 		my $description = __xn("mate in 1", "mate in {num_moves}",
 			                  abs $info->{mate} + $correction,
 			                  num_moves => abs $info->{mate});
