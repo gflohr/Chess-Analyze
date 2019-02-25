@@ -265,6 +265,7 @@ sub analyzeGame {
 			if ($info->{bestmove} ne $info->{move}) {
 				if ($i + 1 < @{$analysis->{infos}}) {
 					$score = $self->__fullScore($analysis->{infos}->[$i + 1], +1);
+					undef $score if $score->{cp} == $best_score->{cp};
 				}
 			}
 
