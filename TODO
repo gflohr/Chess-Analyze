@@ -4,3 +4,4 @@
 - make thresholds configurable
 - make initial score configurable
 - show better pv for inexact score
+- one analysis per thread?

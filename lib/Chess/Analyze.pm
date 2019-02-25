@@ -275,8 +275,8 @@ sub analyzeGame {
 			}
 
 			my $evaluation = $info->{to_move}
-				? $analysis->{evaluation}->{white}
-				: $analysis->{evaluation}->{black};
+				? $analysis->{evaluation}->{black}
+				: $analysis->{evaluation}->{white};
 			
 			if ($loss) {
 				$evaluation->{loss} += $loss;
@@ -311,9 +311,6 @@ sub analyzeGame {
 		$tags->{Result} = $analysis->{result}->{score};
 		$comments->{$last_move} = qq( { $analysis->{result}->{description} });
 	}
-
-use Data::Dump;
-warn Data::Dump::dump($analysis);
 
 	my $output = '';
 
@@ -403,7 +400,7 @@ warn Data::Dump::dump($analysis);
 			'White-Errors-Per-Move', 
 			sprintf '%+f', $evaluation->{errors} / $white_unforced_moves);
 		$output	.= $self->__printTag(
-			'White-Blunders', $evaluation->{errors});
+			'White-Blunders', $evaluation->{blunders});
 		$output	.= $self->__printTag(
 			'White-Blunders-Per-Move', 
 			sprintf '%+f', $evaluation->{blunders} / $white_unforced_moves);
@@ -422,7 +419,7 @@ warn Data::Dump::dump($analysis);
 			'Black-Errors-Per-Move', 
 			sprintf '%+f', $evaluation->{errors} / $black_unforced_moves);
 		$output	.= $self->__printTag(
-			'Black-Blunders', $evaluation->{errors});
+			'Black-Blunders', $evaluation->{blunders});
 		$output	.= $self->__printTag(
 			'Black-Blunders-Per-Move', 
 			sprintf '%+f', $evaluation->{blunders} / $black_unforced_moves);
