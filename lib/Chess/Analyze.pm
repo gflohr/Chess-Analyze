@@ -272,14 +272,19 @@ sub analyzeGame {
 			my $loss;
 			if ($score) {
 				$loss = $best_score->{cp} - $score->{cp};
-				undef $loss if $loss < 0;
+				if ($loss < 0) {
+					undef $loss;
+				} elsif ($best_score->{mate} && $score->{mate}) {
+					# Ignore faster mates for the loss rate.
+					$loss = 0;
+				}
 			}
 
 			my $evaluation = $info->{to_move}
 				? $analysis->{evaluation}->{black}
 				: $analysis->{evaluation}->{white};
 			
-			if ($loss) {
+			if (defined $loss) {
 				$evaluation->{loss} += $loss;
 				$comment .= " { ($best_score->{text} -> $score->{text}) ";
 				# FIXME! Make this configurable!
@@ -293,10 +298,14 @@ sub analyzeGame {
 									move => $info->{pv}->[0]);
 					++$evaluation->{errors};
 					$comment .= ' ';
+				} elsif ($loss == 0) {
+					$comment .= __x("Faster mate: {move}",
+					                move => $info->{pv}->[0]);
+					$comment .= ' ';
 				}
 				$comment .= "}";
 
-				if ($loss >= 50) {
+				if ($loss >= 50 || $loss == 0) {
 					my $variation = join ' ', @{$info->{pv}};
 					$comment .= " ($variation)";
 				}
@@ -569,7 +578,8 @@ sub __fullScore {
 			                   $mate + $correction,
 			                   num_moves => $mate);
 		$score->{text} = sprintf '%+.2f [%s]', $score->{cp} / 100,
-			                      $description;
+		                          $description;
+		$score->{mate} = 1;
 	} else {
 		$score->{cp} = $sign * $info->{cp};
 		$score->{text} = sprintf '%+.2f', $sign * $info->{cp} / 100;
