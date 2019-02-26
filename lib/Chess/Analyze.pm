@@ -239,11 +239,13 @@ sub analyzeGame {
 		errors => 0,
 		blunders => 0,
 		loss => 0,
+		cp => $self->{__initial_score},
 	};
 	$analysis->{evaluation}->{black} = {
 		errors => 0,
 		blunders => 0,
 		loss => 0,
+		cp => -$self->{__initial_score},
 	};
 	
 	for (my $i = 0; $i < @{$analysis->{infos}}; ++$i) {
@@ -280,7 +282,7 @@ sub analyzeGame {
 				}
 			}
 
-			my $evaluation = $info->{to_move}
+			my $evaluation = $i & 1
 				? $analysis->{evaluation}->{black}
 				: $analysis->{evaluation}->{white};
 			
@@ -563,6 +565,7 @@ sub __fullScore {
 
 	my $score;
 	my $sign = $future ? -1 : +1;
+	my $display_sign = $info->{to_move} ? +1 : -1;
 	my $correction = $future ? 1 : 0;
 	if ($info->{mate}) {
 		my $mate;
@@ -577,12 +580,12 @@ sub __fullScore {
 		my $description = __xn("mate in 1", "mate in {num_moves}",
 			                   $mate + $correction,
 			                   num_moves => $mate);
-		$score->{text} = sprintf '%+.2f [%s]', $score->{cp} / 100,
+		$score->{text} = sprintf '%+.2f [%s]', $display_sign * $score->{cp} / 100,
 		                          $description;
 		$score->{mate} = 1;
 	} else {
 		$score->{cp} = $sign * $info->{cp};
-		$score->{text} = sprintf '%+.2f', $sign * $info->{cp} / 100;
+		$score->{text} = sprintf '%+.2f', $display_sign * $info->{cp} / 100;
 	}
 
 	return $score;
