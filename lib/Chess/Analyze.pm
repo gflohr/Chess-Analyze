@@ -30,6 +30,7 @@ use POSIX qw(:sys_wait_h);
 use Config;
 use Scalar::Util 1.10 qw(looks_like_number);
 use Storable 3.06 qw(dclone);
+use File::Basename;
 
 use constant WHITE_FIELDS => [
 	1, 0, 1, 0, 1, 0, 1, 0,
@@ -78,8 +79,10 @@ sub new {
 
 	unshift @{$options{option}}, "Hash=$options{memory}";
 
-	$self->{__book} = Chess::Opening::Book::Polyglot->new($options{book})
-		if defined $options{book} && length $options{book};
+	if (defined $options{book} && length $options{book}) {
+		$self->{__book} = Chess::Opening::Book::Polyglot->new($options{book});
+		$self->{__book_name} = basename $options{book};
+	}
 
 	bless $self, $class;
 
@@ -369,6 +372,7 @@ sub analyzeGame {
 		ECO => 1,
 		Variation => 1,
 		'Scid-ECO' => 1,
+		Book => 1,
 	);
 
 	foreach my $tag (sort keys %$tags) {
@@ -393,6 +397,10 @@ sub analyzeGame {
 
 	if (defined $self->{__analyzer}) {
 		$output .= $self->__printTag(Analyzer => $self->{__analyzer});
+	}
+
+	if (defined $self->{__book_name}) {
+		$output .= $self->__printTag(Book => $self->{__book_name});
 	}
 
 	my $half_moves = @{$analysis->{infos}};
