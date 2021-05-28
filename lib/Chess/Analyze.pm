@@ -202,7 +202,7 @@ sub analyzeFile {
 		$output .= $self->analyzeGame($pgn) or return;
 	}
 
-print $output;
+	print $output;
 
 	return $self;
 }
